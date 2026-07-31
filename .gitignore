@@ -1,0 +1,28 @@
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Laufzeitdaten der Dienste: Datenbank, BRouter-Segmente (je ~200 MB),
+# heruntergeladene Kartenausschnitte. Nichts davon gehört ins Repository.
+/data
+

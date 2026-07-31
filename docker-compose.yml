@@ -1,0 +1,52 @@
+# Wandervogel — Dienste für Entwicklung und Betrieb.
+#
+# Die App selbst läuft in der Entwicklung über `pnpm dev` auf dem Host,
+# damit Hot Reload funktioniert. Hier stehen nur die Dienste, die sie braucht.
+#
+# Alle Ports sind auf 127.0.0.1 gebunden: Datenbank und Routing-Engine
+# gehören nicht ins Internet, auch nicht auf dem eigenen Server.
+
+services:
+  db:
+    container_name: wv-db
+    # imresamu/postgis ist derselbe Inhalt wie postgis/postgis, aber
+    # multi-arch. Das offizielle Image ist amd64-only und würde auf
+    # Apple Silicon emuliert laufen.
+    image: imresamu/postgis:17-3.5
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wandervogel}
+      POSTGRES_USER: ${POSTGRES_USER:-wandervogel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in .env}
+      # Deutsche Sortierung für Tournamen im Archiv — über ICU, nicht über
+      # eine System-Locale. Das Image erzeugt kein de_DE, `LANG=de_DE.utf8`
+      # lässt initdb scheitern.
+      POSTGRES_INITDB_ARGS: '--locale-provider=icu --icu-locale=de-DE --encoding=UTF8'
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-wandervogel} -d ${POSTGRES_DB:-wandervogel}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  brouter:
+    container_name: wv-brouter
+    build:
+      context: ./docker/brouter
+      args:
+        BROUTER_VERSION: ${BROUTER_VERSION:-1.7.10}
+    ports:
+      - '127.0.0.1:${BROUTER_PORT:-17777}:17777'
+    volumes:
+      # Segmente liegen außerhalb des Images — sie sind groß (~170–240 MB
+      # je 5°-Feld) und sollen Neubauten überleben.
+      # Herunterladen mit: pnpm run segments
+      - ./data/brouter/segments4:/opt/brouter/segments4
+      # Eigene Profile können hier ohne Neubau eingehängt werden.
+      - ./docker/brouter/customprofiles:/opt/brouter/customprofiles
+    restart: unless-stopped

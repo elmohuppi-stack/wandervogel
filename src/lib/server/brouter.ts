@@ -1,0 +1,143 @@
+import { env } from '$env/dynamic/private';
+import { activity, type ActivityType } from '$lib/geo/activity';
+import { toSegments, type RoutePoint } from '$lib/geo/duration';
+import type { RouteResult, Waypoint } from '$lib/tour/types';
+import type { FeatureCollection } from 'geojson';
+
+/**
+ * BRouter-Anbindung.
+ *
+ * BRouter ist als Fahrrad-Router entstanden und später um Wanderprofile
+ * erweitert worden — beide Aktivitätsarten laufen deshalb über *eine*
+ * Engine, gesteuert allein durch die Profildatei aus der
+ * Aktivitätsdefinition. Die Wegewertung (`sac_scale`, `trail_visibility`,
+ * `surface`) steckt in diesen Profilen, nicht in unserem Code.
+ *
+ * Die Dauer rechnen wir bewusst selbst: BRouters `total-time` folgt einem
+ * eigenen Modell, das wir dem Nutzer nicht erklären könnten. Die
+ * Anforderung verlangt eine nachvollziehbare Formel.
+ */
+
+const BROUTER_URL = env.BROUTER_URL ?? 'http://localhost:17777';
+
+export class BrouterError extends Error {
+	constructor(
+		message: string,
+		readonly kind: 'unreachable' | 'no_route' | 'no_data' | 'bad_request'
+	) {
+		super(message);
+		this.name = 'BrouterError';
+	}
+}
+
+interface BrouterProperties {
+	'track-length'?: string;
+	'filtered ascend'?: string;
+	'plain-ascend'?: string;
+	'total-time'?: string;
+	messages?: unknown;
+}
+
+export async function calculateRoute(
+	waypoints: Waypoint[],
+	activityType: ActivityType,
+	fetchFn: typeof fetch = fetch
+): Promise<RouteResult> {
+	if (waypoints.length < 2) {
+		throw new BrouterError('Mindestens zwei Wegpunkte nötig', 'bad_request');
+	}
+
+	const def = activity(activityType);
+
+	// BRouter erwartet `lon,lat|lon,lat|…` — Länge zuerst, nicht Breite.
+	const lonlats = waypoints.map((w) => `${w.lon.toFixed(6)},${w.lat.toFixed(6)}`).join('|');
+
+	const url = new URL('/brouter', BROUTER_URL);
+	url.searchParams.set('lonlats', lonlats);
+	url.searchParams.set('profile', def.brouterProfile);
+	url.searchParams.set('alternativeidx', '0');
+	url.searchParams.set('format', 'geojson');
+
+	let res: Response;
+	try {
+		res = await fetchFn(url, { signal: AbortSignal.timeout(30_000) });
+	} catch (e) {
+		throw new BrouterError(
+			`Routing-Dienst nicht erreichbar (${BROUTER_URL}). Läuft der Container?`,
+			'unreachable'
+		);
+	}
+
+	const body = await res.text();
+
+	// BRouter antwortet bei Fehlern mit Klartext statt GeoJSON — und
+	// mitunter sogar mit Status 200. Deshalb wird der Inhalt geprüft,
+	// nicht der Statuscode.
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(body);
+	} catch {
+		const msg = body.trim().slice(0, 300);
+		if (/datafile.*not found|no data file/i.test(msg)) {
+			throw new BrouterError(
+				'Für dieses Gebiet fehlen die Routing-Segmente. ' +
+					'Herunterladen mit: pnpm run segments',
+				'no_data'
+			);
+		}
+		throw new BrouterError(msg || 'Keine Route gefunden', 'no_route');
+	}
+
+	const fc = parsed as FeatureCollection;
+	const feature = fc?.features?.[0];
+
+	if (!feature || feature.geometry?.type !== 'LineString') {
+		throw new BrouterError('Antwort enthält keine Route', 'no_route');
+	}
+
+	const raw = feature.geometry.coordinates as number[][];
+	if (raw.length < 2) {
+		throw new BrouterError('Route ist leer', 'no_route');
+	}
+
+	// BRouter liefert `[lon, lat, ele]`. Fehlt die Höhe, wird 0 angenommen —
+	// besser eine Route ohne Profil als gar keine.
+	const coordinates: [number, number, number][] = raw.map((c) => [c[0], c[1], c[2] ?? 0]);
+
+	return { ...deriveStats(coordinates, activityType), coordinates };
+}
+
+/**
+ * Kennzahlen aus den Stützpunkten ableiten.
+ *
+ * Getrennt von der Netzanfrage, damit dieselbe Rechnung auch für
+ * importierte GPX-Dateien und aufgezeichnete Tracks gilt — die Zahlen im
+ * Archiv sollen unabhängig von ihrer Herkunft vergleichbar sein.
+ */
+export function deriveStats(
+	coordinates: [number, number, number][],
+	activityType: ActivityType
+): Omit<RouteResult, 'coordinates'> {
+	const points: RoutePoint[] = coordinates.map(([lon, lat, ele]) => ({ lon, lat, ele }));
+	const segments = toSegments(points);
+
+	let distanceM = 0;
+	let ascentM = 0;
+	let descentM = 0;
+	for (const s of segments) {
+		distanceM += s.distanceM;
+		if (s.ascentM > 0) ascentM += s.ascentM;
+		else descentM += -s.ascentM;
+	}
+
+	const elevations = points.map((p) => p.ele);
+
+	return {
+		distanceM,
+		ascentM,
+		descentM,
+		minEleM: Math.min(...elevations),
+		maxEleM: Math.max(...elevations),
+		durationS: activity(activityType).durationS(segments)
+	};
+}

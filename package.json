@@ -1,0 +1,44 @@
+{
+	"name": "wandervogel",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"services": "docker compose up -d",
+		"services:stop": "docker compose down",
+		"services:logs": "docker compose logs -f",
+		"segments": "./scripts/fetch-brouter-segments.sh"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-node": "^5.5.7",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@types/geojson": "^7946.0.16",
+		"@types/node": "^26.1.2",
+		"drizzle-kit": "^0.31.10",
+		"playwright": "^1.62.0",
+		"svelte": "^5.56.1",
+		"svelte-check": "^4.6.0",
+		"typescript": "^6.0.3",
+		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"@turf/along": "^7.3.5",
+		"@turf/bbox": "^7.3.5",
+		"@turf/distance": "^7.3.5",
+		"@turf/helpers": "^7.3.5",
+		"@turf/length": "^7.3.5",
+		"@turf/nearest-point-on-line": "^7.3.5",
+		"drizzle-orm": "^0.45.2",
+		"maplibre-contour": "^0.1.0",
+		"maplibre-gl": "^6.0.0",
+		"pmtiles": "^4.4.1",
+		"postgres": "^3.4.9"
+	}
+}
