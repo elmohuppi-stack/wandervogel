@@ -32,6 +32,32 @@ export interface Tour {
 	visibility: 'private' | 'instance';
 }
 
+/**
+ * Eine Tour, wie die Listenansicht sie braucht — ohne die volle Geometrie.
+ *
+ * Erfüllt strukturell `MetricInput`; genau deshalb ist der dort als
+ * Strukturtyp und nicht als `RouteResult` deklariert. Die Tourenkarte kann
+ * damit `def.listMetrics(tour)` direkt aufrufen.
+ */
+export interface TourListItem {
+	id: string;
+	name: string;
+	activityType: ActivityType;
+	date: string | null;
+	note: string | null;
+	distanceM: number;
+	ascentM: number;
+	descentM: number;
+	durationS: number;
+	minEleM: number;
+	maxEleM: number;
+	/** Vereinfachte Linie für Übersichtskarte und Skizze, `[lon, lat]`. */
+	outline: [number, number][];
+	/** `[minLon, minLat, maxLon, maxLat]` — direkt für `fitBounds`. */
+	bbox: [number, number, number, number];
+	updatedAt: string;
+}
+
 export function emptyTour(activityType: ActivityType): Tour {
 	return {
 		name: 'Neue Tour',

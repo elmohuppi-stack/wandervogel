@@ -1,5 +1,6 @@
 import { isActivityType } from '$lib/geo/activity';
 import { BrouterError, calculateRoute } from '$lib/server/brouter';
+import { parseWaypoints } from '$lib/tour/parse';
 import type { Waypoint } from '$lib/tour/types';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -9,30 +10,14 @@ import type { RequestHandler } from './$types';
  *
  * Läuft über den Server, weil BRouter nicht ins Internet gehört und
  * ohnehin keine CORS-Header sendet.
+ *
+ * `parseWaypoints` liegt in $lib/tour/parse, weil das Speichern dieselbe
+ * Prüfung braucht — und später der GPX-Import.
  */
 
 interface RouteRequest {
 	activityType: unknown;
 	waypoints: unknown;
-}
-
-function parseWaypoints(input: unknown): Waypoint[] {
-	if (!Array.isArray(input)) throw new Error('waypoints muss ein Array sein');
-
-	return input.map((w, i) => {
-		const lon = Number((w as Waypoint)?.lon);
-		const lat = Number((w as Waypoint)?.lat);
-
-		if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
-			throw new Error(`Wegpunkt ${i + 1}: ungültige Länge`);
-		}
-		if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-			throw new Error(`Wegpunkt ${i + 1}: ungültige Breite`);
-		}
-
-		const id = (w as Waypoint)?.id;
-		return { id: typeof id === 'string' ? id : String(i), lon, lat };
-	});
 }
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
