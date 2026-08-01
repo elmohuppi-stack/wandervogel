@@ -6,9 +6,21 @@
 	 * nur neben den anderen; ein Farbpaar, das im Dunkelmodus kippt, nur wenn
 	 * man umschaltet, ohne die Seite zu wechseln.
 	 */
+	import Alert from '$lib/ui/Alert.svelte';
+	import Button from '$lib/ui/Button.svelte';
+	import Chip from '$lib/ui/Chip.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
+	import IconButton from '$lib/ui/IconButton.svelte';
+	import MetricTile from '$lib/ui/MetricTile.svelte';
+	import Panel from '$lib/ui/Panel.svelte';
+	import SegmentedControl from '$lib/ui/SegmentedControl.svelte';
+	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
 	import { ICON_NAMES } from '$lib/ui/icons';
 	import { theme, type ThemeChoice } from '$lib/ui/theme.svelte';
+
+	let art = $state('hike');
+	let filter = $state('alle');
 
 	const FARBEN = [
 		['--paper', 'Hintergrund der App'],
@@ -61,6 +73,97 @@
 			{/each}
 		</div>
 	</header>
+
+	<section>
+		<h2 class="label">Knöpfe</h2>
+		<div class="reihe">
+			<Button variant="primary" icon="save">Speichern</Button>
+			<Button variant="quiet" icon="crosshair">Auf Tour zentrieren</Button>
+			<Button variant="ghost" icon="chevron-left" href="/planen">Touren</Button>
+			<Button variant="danger" icon="trash">Tour löschen</Button>
+			<Button variant="primary" loading>Speichert …</Button>
+			<Button variant="quiet" disabled icon="save">Gesperrt</Button>
+		</div>
+		<div class="reihe">
+			<Button variant="ghost" size="sm" icon="trash">alle löschen</Button>
+			<Button variant="quiet" size="sm" iconEnd="chevron-down">Einklappen</Button>
+			<IconButton icon="trash" label="Wegpunkt löschen" tone="danger" />
+			<IconButton icon="close" label="Schließen" size="sm" />
+			<IconButton icon="layers" label="Ebenen" pressed />
+		</div>
+		<div class="reihe schmal">
+			<Button variant="quiet" wide icon="crosshair">Über die volle Breite</Button>
+		</div>
+	</section>
+
+	<section>
+		<h2 class="label">Umschalter und Chips</h2>
+		<div class="reihe">
+			<SegmentedControl
+				bind:value={art}
+				label="Aktivitätsart"
+				options={[
+					{ value: 'hike', label: 'Wandern', icon: 'hike', colorVar: '--route-hike' },
+					{ value: 'bike', label: 'Rad', icon: 'bike', colorVar: '--route-bike' }
+				]}
+			/>
+			<ThemeToggle />
+			<ThemeToggle size="sm" labelsHidden={false} />
+		</div>
+		<div class="reihe">
+			{#each [['alle', 'Alle'], ['hike', 'Wandern'], ['bike', 'Rad']] as [v, t] (v)}
+				<Chip
+					pressed={filter === v}
+					colorVar={v === 'alle' ? undefined : `--route-${v}`}
+					onclick={() => (filter = v)}>{t}</Chip
+				>
+			{/each}
+			<Chip icon="hike" colorVar="--route-hike">Wandern</Chip>
+		</div>
+	</section>
+
+	<section>
+		<h2 class="label">Panel, Kennzahlen, Leerzustand, Hinweise</h2>
+		<div class="zwei">
+			<div class="rahmen">
+				<Panel title="Kennzahlen" icon="gauge">
+					<div class="gross">
+						<MetricTile icon="ruler" label="Länge" value="14,2" unit="km" size="lg" />
+						<MetricTile icon="clock" label="Dauer" value="4:25" unit="h" size="lg" />
+					</div>
+					<div class="klein">
+						<MetricTile icon="ascent" label="Aufstieg" value="620" unit="hm" />
+						<MetricTile icon="descent" label="Abstieg" value="580" unit="hm" />
+						<MetricTile icon="mountain" label="Höchster Punkt" value="880" unit="m" />
+						<MetricTile icon="mountain" iconRotate={180} label="Tiefster" value="310" unit="m" />
+					</div>
+				</Panel>
+				<Panel title="Wegpunkte" icon="waypoint" count={0}>
+					<EmptyState icon="waypoint" size="sm" title="Noch keine">
+						In die Karte klicken setzt den ersten.
+					</EmptyState>
+				</Panel>
+			</div>
+
+			<div class="stapel">
+				<div class="karte">
+					<EmptyState icon="route" title="Los geht’s">
+						In die Karte klicken setzt den Start. Ab dem zweiten Wegpunkt wird die Route
+						entlang echter Wanderwege berechnet.
+						{#snippet actions()}
+							<Button variant="quiet" size="sm" icon="search">Ort suchen</Button>
+						{/snippet}
+					</EmptyState>
+				</div>
+				<Alert tone="info">Zwei Wegpunkte genügen für die erste Berechnung.</Alert>
+				<Alert tone="ok">Auf Route.</Alert>
+				<Alert tone="warn">120 m abseits der Route.</Alert>
+				<Alert tone="bad" onDismiss={() => {}}>
+					Routing-Dienst nicht erreichbar (17777). Läuft der Container?
+				</Alert>
+			</div>
+		</div>
+	</section>
 
 	<section>
 		<h2 class="label">Farben</h2>
@@ -194,6 +297,57 @@
 		font-family: var(--mono);
 		font-size: var(--fs-xs);
 		color: var(--ink-3);
+	}
+
+	.reihe {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sp-5);
+		margin-bottom: var(--sp-5);
+	}
+	.reihe.schmal {
+		max-width: 18rem;
+	}
+
+	.zwei {
+		display: grid;
+		grid-template-columns: var(--rail-w) 1fr;
+		gap: var(--sp-6);
+		align-items: start;
+	}
+
+	.rahmen {
+		background: var(--surface);
+		border: 1px solid var(--edge);
+		border-radius: var(--r-md);
+		overflow: hidden;
+	}
+
+	.stapel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--sp-5);
+	}
+
+	.karte {
+		background: var(--surface);
+		border: 1px solid var(--edge);
+		border-radius: var(--r-sm);
+		box-shadow: var(--el-2);
+		padding: var(--sp-5) var(--sp-6);
+	}
+
+	.gross {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--sp-5);
+		margin-bottom: var(--sp-5);
+	}
+	.klein {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--sp-4) var(--sp-5);
 	}
 
 	.farben li {
