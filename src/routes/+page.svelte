@@ -16,9 +16,13 @@
 	import type { ActivityType } from '$lib/geo/activity';
 	import TourOverviewMap from '$lib/map/TourOverviewMap.svelte';
 	import ActivityChips from '$lib/ui/ActivityChips.svelte';
+	import Alert from '$lib/ui/Alert.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
+	import IconButton from '$lib/ui/IconButton.svelte';
+	import MapTools from '$lib/ui/MapTools.svelte';
+	import PlaceSearch from '$lib/ui/PlaceSearch.svelte';
 	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
 	import TourCard from './TourCard.svelte';
 	import type { PageData } from './$types';
@@ -30,6 +34,8 @@
 	// Adresse folgt ihm entprellt, nicht umgekehrt.
 	let suche = $state(untrack(() => data.filter.q));
 	let liste: HTMLDivElement | undefined = $state();
+	let mapRef = $state<ReturnType<typeof TourOverviewMap> | undefined>();
+	let ortungsfehler = $state<string | null>(null);
 
 	const SORTIERUNGEN = [
 		['updated', 'Zuletzt geändert'],
@@ -154,10 +160,41 @@
 
 	<main class="karte">
 		<TourOverviewMap
+			bind:this={mapRef}
 			tours={data.tours}
 			bind:hoveredId
 			onSelect={(id: string) => goto(`/planen/${id}`)}
 		/>
+
+		<!-- Dieselben Werkzeuge wie in der Planungsansicht: dort wie hier
+		     gehören sie auf die Karte. Gesucht wird hier nach *Orten* — das
+		     Feld in der Liste sucht Touren. -->
+		<div class="karten-suche">
+			<PlaceSearch onSelect={(o) => mapRef?.flyToPlace(o.lon, o.lat, o.bbox)} />
+		</div>
+
+		<MapTools>
+			<IconButton
+				icon="location-fix"
+				label="Auf meinen Standort"
+				onclick={async () => {
+					await mapRef?.locate();
+					ortungsfehler = mapRef?.locateState().error ?? null;
+				}}
+			/>
+			<IconButton
+				icon="crosshair"
+				label="Alle Touren zeigen"
+				onclick={() => mapRef?.fitToTours()}
+				disabled={data.tours.length === 0}
+			/>
+		</MapTools>
+
+		{#if ortungsfehler}
+			<div class="karten-fehler">
+				<Alert tone="bad" onDismiss={() => (ortungsfehler = null)}>{ortungsfehler}</Alert>
+			</div>
+		{/if}
 	</main>
 </div>
 
@@ -259,6 +296,24 @@
 	.karte {
 		position: relative;
 		min-height: 0;
+	}
+
+	.karten-suche {
+		position: absolute;
+		top: var(--sp-5);
+		left: var(--sp-5);
+		z-index: var(--z-map-ui);
+		width: min(22rem, calc(100% - 2 * var(--sp-5) - var(--hit-sm) - var(--sp-4)));
+	}
+
+	.karten-fehler {
+		position: absolute;
+		bottom: var(--sp-5);
+		left: 50%;
+		translate: -50% 0;
+		z-index: var(--z-map-ui);
+		max-width: 44ch;
+		box-shadow: var(--el-2);
 	}
 
 	@media (max-width: 900px) {

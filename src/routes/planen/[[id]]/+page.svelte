@@ -25,6 +25,7 @@
 	import IconButton from '$lib/ui/IconButton.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import MetricGrid from '$lib/ui/MetricGrid.svelte';
+	import MapTools from '$lib/ui/MapTools.svelte';
 	import Panel from '$lib/ui/Panel.svelte';
 	import PlaceSearch from '$lib/ui/PlaceSearch.svelte';
 	import PlannerTopbar from './PlannerTopbar.svelte';
@@ -331,7 +332,7 @@
 			<PlaceSearch onSelect={(o) => mapRef?.flyToPlace(o.lon, o.lat, o.bbox)} />
 		</div>
 
-		<div class="werkzeuge-rechts">
+		<MapTools>
 			<IconButton
 				icon="location-fix"
 				label="Auf meinen Standort"
@@ -340,7 +341,7 @@
 					ortungsfehler = mapRef?.locateState().error ?? null;
 				}}
 			/>
-		</div>
+		</MapTools>
 
 		{#if tour.waypoints.length === 0}
 			<StartCard {def} />
@@ -502,20 +503,6 @@
 		left: var(--sp-5);
 		z-index: var(--z-map-ui);
 		width: min(22rem, calc(100% - 2 * var(--sp-5) - var(--hit-sm) - var(--sp-4)));
-	}
-
-	.werkzeuge-rechts {
-		position: absolute;
-		top: var(--sp-5);
-		right: var(--sp-5);
-		z-index: var(--z-map-ui);
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		background: var(--surface);
-		border: 1px solid var(--edge);
-		border-radius: var(--r-sm);
-		box-shadow: var(--el-2);
 	}
 
 	.fehler {

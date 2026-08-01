@@ -17,6 +17,13 @@
 	import type { TourListItem } from '$lib/tour/types';
 	import { prefersReducedMotion, resolveColorToken, theme } from '$lib/ui/theme.svelte';
 	import { addTerrainLayers, createMap } from './basemap';
+	import {
+		addPositionLayers,
+		locateOnce,
+		positionFeatures,
+		SRC_POSITION,
+		type Position
+	} from './position';
 
 	interface Props {
 		tours: TourListItem[];
@@ -34,6 +41,12 @@
 	const SRC = 'wv-tours';
 	const LYR = 'wv-tours-line';
 	const LYR_HL = 'wv-tours-highlight';
+
+	/** Eigener Standort. Beim Stöbern im Archiv nützlich: welche Tour
+	 *  beginnt eigentlich in der Nähe? */
+	let position = $state<Position | null>(null);
+	let locating = $state(false);
+	let locateError = $state<string | null>(null);
 
 	function collection(): FeatureCollection {
 		return {
@@ -99,6 +112,8 @@
 				paint: { 'line-color': ['get', 'color'], 'line-width': 5 }
 			});
 
+			addPositionLayers(m, position);
+
 			m.on('mousemove', LYR, (e) => {
 				const id = e.features?.[0]?.properties?.id;
 				if (typeof id === 'string') {
@@ -136,6 +151,63 @@
 		if (!ready || !map) return;
 		map.setFilter(LYR_HL, ['==', ['get', 'id'], hoveredId ?? '']);
 	});
+
+	$effect(() => {
+		void position;
+		if (!ready) return;
+		(map?.getSource(SRC_POSITION) as GeoJSONSource | undefined)?.setData(
+			positionFeatures(position)
+		);
+	});
+
+	/* ------------------------------------------------------------------
+	   Von außen aufrufbar
+	   ------------------------------------------------------------------ */
+
+	export async function locate(): Promise<void> {
+		if (locating) return;
+		locating = true;
+		locateError = null;
+		const r = await locateOnce();
+		locating = false;
+
+		if (!r.ok) {
+			locateError = r.error;
+			return;
+		}
+		position = r.position;
+		map?.flyTo({
+			center: [position.lon, position.lat],
+			zoom: Math.max(map.getZoom(), 12),
+			duration: prefersReducedMotion() ? 0 : 600
+		});
+	}
+
+	export function locateState() {
+		return { locating, error: locateError, hasPosition: position !== null };
+	}
+
+	/** Auf einen Ort aus der Suche springen. */
+	export function flyToPlace(
+		lon: number,
+		lat: number,
+		bbox?: [number, number, number, number]
+	) {
+		if (!map) return;
+		const duration = prefersReducedMotion() ? 0 : 600;
+		const gross = bbox && (bbox[2] - bbox[0] > 0.002 || bbox[3] - bbox[1] > 0.002);
+		if (gross && bbox) {
+			map.fitBounds(
+				[
+					[bbox[0], bbox[1]],
+					[bbox[2], bbox[3]]
+				],
+				{ padding: 80, maxZoom: 14, duration }
+			);
+		} else {
+			map.flyTo({ center: [lon, lat], zoom: 12, duration });
+		}
+	}
 
 	/** Ausschnitt über alle Touren. Liest die Bounding Boxen, nicht die
 	 *  Geometrien — vier Zahlen je Tour statt tausend Punkte. */
