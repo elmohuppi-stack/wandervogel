@@ -28,6 +28,22 @@ export const ICONS = {
 		'<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
 	crosshair:
 		'<circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+	/**
+	 * Eigener Standort. Bewusst anders als `waypoint`: der Wegpunkt ist
+	 * etwas Gesetztes, der Standort etwas Gemessenes — der Ring ist die
+	 * Ortungsgenauigkeit. Auf der Feldansicht liegen beide nebeneinander
+	 * auf der Karte und dürfen sich nicht verwechseln lassen.
+	 */
+	location:
+		'<circle cx="12" cy="12" r="3.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8"/>',
+	/**
+	 * Auf den eigenen Standort zentrieren — der Knopf dazu.
+	 *
+	 * Das Fadenkreuz mit gefülltem Kern, wie überall. Ein gestrichelter
+	 * Ring war der erste Versuch und wurde bei 14px zu Brei.
+	 */
+	'location-fix':
+		'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M12 1.8v3.4M12 18.8v3.4M1.8 12h3.4M18.8 12h3.4"/>',
 	layers:
 		'<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m6.08 9.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59"/><path d="m6.08 14.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59"/>',
 	search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',

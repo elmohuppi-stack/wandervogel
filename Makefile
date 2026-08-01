@@ -21,7 +21,7 @@ APP_LOG  := $(RUN_DIR)/app.log
 .DEFAULT_GOAL := help
 .PHONY: help install env services services-stop logs start dev stop restart \
         build preview preview-stop check segments status clean clean-all \
-        db-generate db-migrate db-push db-studio db-dump db-restore
+        db-generate db-migrate db-push db-studio db-dump db-restore kill-own
 
 ## ----------------------------------------------------------------- Übersicht
 
@@ -92,9 +92,8 @@ logs:
 
 ## -------------------------------------------------------- Entwicklungsserver
 
-# Im Hintergrund, damit `make stop` einen Gegenpart hat. Angehalten wird über
-# den Port und nicht nur über die PID: `pnpm dev` startet Vite als Kindprozess,
-# der die PID-Datei sonst überlebt.
+# Im Hintergrund, damit `make stop` einen Gegenpart hat. Die PID wandert in
+# eine Datei — nur was hier notiert ist, darf `make stop` später beenden.
 start: node_modules services | $(RUN_DIR)
 	@if lsof -ti tcp:$(APP_PORT) >/dev/null 2>&1; then \
 		echo 'Auf Port $(APP_PORT) läuft schon etwas — vorher: make stop'; \
@@ -116,29 +115,40 @@ dev: node_modules services
 	pnpm dev
 
 stop:
-	@$(MAKE) --no-print-directory kill-port PORT=$(APP_PORT) WHAT='Entwicklungsserver'
-	@$(MAKE) --no-print-directory kill-port PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
-	@rm -f $(DEV_PID) $(APP_PID)
+	@$(MAKE) --no-print-directory kill-own PIDFILE=$(DEV_PID) PORT=$(APP_PORT) WHAT='Entwicklungsserver'
+	@$(MAKE) --no-print-directory kill-own PIDFILE=$(APP_PID) PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
 	docker compose down
 
 restart: stop start
 
-# Hilfsziel: was auch immer auf PORT hört, freundlich beenden.
-.PHONY: kill-port
-kill-port:
-	@pids=$$(lsof -ti tcp:$(PORT) 2>/dev/null); \
-	if [ -n "$$pids" ]; then \
-		kill $$pids 2>/dev/null || true; \
-		for i in $$(seq 1 10); do \
-			lsof -ti tcp:$(PORT) >/dev/null 2>&1 || break; \
-			sleep 1; \
-		done; \
-		pids=$$(lsof -ti tcp:$(PORT) 2>/dev/null); \
-		[ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true; \
-		echo "$(WHAT) angehalten (Port $(PORT))."; \
-	else \
-		echo "$(WHAT) lief nicht."; \
-	fi
+# Beendet nur, was dieses Makefile selbst gestartet hat.
+#
+# Vorher stand hier ein `kill` auf alles, was auf dem Port hört. Das hat
+# einen fremden Docker-Proxy auf Port 3000 erwischt — dort lief eine andere
+# App — und in der Folge Docker Desktop mitgerissen. Ein Werkzeug, das
+# fremde Prozesse abschießt, weil sie zufällig auf derselben Nummer hören,
+# ist kaputt, egal wie bequem es sonst wäre.
+#
+# `pkill -P` zuerst: `pnpm dev` startet Vite als Kindprozess, der ein kill
+# auf die pnpm-PID sonst überlebt.
+.PHONY: kill-own
+kill-own:
+	@pid=$$(cat $(PIDFILE) 2>/dev/null); \
+	if [ -z "$$pid" ] || ! kill -0 $$pid 2>/dev/null; then \
+		rm -f $(PIDFILE); \
+		if lsof -ti tcp:$(PORT) >/dev/null 2>&1; then \
+			echo "$(WHAT): Port $(PORT) ist belegt, aber nicht von uns — nichts angefasst."; \
+		else \
+			echo "$(WHAT) lief nicht."; \
+		fi; \
+		exit 0; \
+	fi; \
+	pkill -P $$pid 2>/dev/null || true; \
+	kill $$pid 2>/dev/null || true; \
+	for i in $$(seq 1 10); do kill -0 $$pid 2>/dev/null || break; sleep 1; done; \
+	kill -9 $$pid 2>/dev/null || true; \
+	rm -f $(PIDFILE); \
+	echo "$(WHAT) angehalten."
 
 status:
 	@if lsof -ti tcp:$(APP_PORT) >/dev/null 2>&1; then \
@@ -173,8 +183,7 @@ preview: build services | $(RUN_DIR)
 	echo 'Server ist nicht hochgekommen. Letzte Zeilen:'; tail -n 20 $(APP_LOG); exit 1
 
 preview-stop:
-	@$(MAKE) --no-print-directory kill-port PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
-	@rm -f $(APP_PID)
+	@$(MAKE) --no-print-directory kill-own PIDFILE=$(APP_PID) PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
 
 check: node_modules
 	pnpm check
