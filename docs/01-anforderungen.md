@@ -4,6 +4,12 @@
 > **Gewählt: Variante C** — Wandern vollständig, Radfahren als Kernfeature, Architektur von
 > Anfang an zweigleisig (Abschnitt 8). Name bleibt **Wandervogel**.
 > Nächster Schritt ist der technische Implementierungsplan (Abschnitt 9).
+>
+> **Nachtrag 1. August 2026 — Gestaltung geschärft.** Nach dem ersten lauffähigen Planer
+> zeigte der direkte Vergleich mit Komoot, dass Abschnitt 7 zu einseitig gelesen wurde:
+> „Bedienelemente treten zurück" wurde als „es gibt keine" umgesetzt. Der Frust galt dem
+> **Beiwerk**, nie dem **Handwerk**. Abschnitt 7 unterscheidet das jetzt ausdrücklich,
+> Abschnitt 9 nennt die daraus folgende Reihenfolge.
 
 ---
 
@@ -22,6 +28,13 @@ PocketBase als DB und ein für diesen Zweck irrelevanter Fediverse-Teil.
 
 **Angestrebtes Ergebnis:** eine App, die weniger kann als Komoot, aber das Wenige klar —
 und die im Funkloch vollständig funktioniert.
+
+**Was Komoot gut macht.** Der Ärger gilt dem Beiwerk, nicht der Machart. Komoot ist handwerklich
+sauber gebaut, und genau das ist der Maßstab: jede Aktion hat ein sichtbares Symbol, Tourenlisten
+sind dicht und aussagekräftig (Vorschaubild, Kennzahlen, Aktivitätsart auf einen Blick), Filter
+liegen offen statt in Menüs, Flächen sind hell und ruhig, Zahlen groß und lesbar. Diese Qualität
+ist erklärtes Ziel. **Übernommen wird das Handwerk, abgelehnt bleibt der Inhalt** — Feed,
+Community-Highlights, Werbung, fremde Tourenvorschläge. Abschnitt 7 trennt beides Punkt für Punkt.
 
 ---
 
@@ -79,6 +92,23 @@ Damit lässt sich später eine dritte Art ergänzen, ohne die App umzubauen.
 - ❌ **GPS-Aufzeichnung mit Handy in der Tasche / Display aus** — vom Nutzer als unwichtig
   eingestuft. Das ist der Grund, warum eine reine PWA genügt.
 - ❌ Komoot-Migration — es wird bei null angefangen
+
+### Was „keine Community-Datenbank" nicht heißt
+
+Der Wunsch, **vorhandene Touren** zu sehen statt jede von Hand zu klicken, ist berechtigt und
+bleibt erfüllt — nur nicht über fremde Nutzerinhalte. Es gibt drei zugelassene Quellen:
+
+1. **Benannte OSM-Routen** — Rothaarsteig, Pfälzer Waldpfad, EuroVelo 15, PAM2. In Deutschland
+   Zehntausende offizielle Routen mit Name, Länge und Etappen, frei und selbst hostbar.
+   Das ist Weg B in Abschnitt 6.2 und die eigentliche Antwort auf „zeig mir, was es hier gibt".
+2. **GPX-Dateien**, die andere schicken oder die man aus dem Netz lädt — Weg C.
+3. **Touren anderer Nutzer derselben Instanz**, wenn sie freigegeben werden (KANN, Abschnitt 6.1).
+
+**Nicht zugelassen** sind Komoot, Outdooractive, AllTrails, Wikiloc und Strava. Alle brauchen
+API-Schlüssel oder Partnerzugang, viele untersagen das Speichern der Daten, und jede von ihnen
+kippt gleich zwei harte Randbedingungen aus Abschnitt 7: „keine API-Schlüssel" und „keine
+Fremd-Fair-Use-Dienste im Dauerbetrieb". Eine offene, selbst hostbare Datenbank *geplanter*
+Touren existiert nicht — das ist eine Tatsache über den Markt, keine Designentscheidung.
 
 ---
 
@@ -164,6 +194,7 @@ Der MVP-Schnitt ist „Mittel" (Abschnitt 7).
 | MUSS | Dauer nach nachvollziehbarer Formel — DAV/SAC beim Wandern, Geschwindigkeitsmodell beim Radfahren; Parameter einstellbar |
 | MUSS | **Untergrund entlang der Route** erkennbar (asphaltiert / geschottert / unbefestigt) — für Radtouren entscheidend, beim Wandern nützlich |
 | MUSS | Tour speichern mit Name, Datum, Aktivitätsart, Notiz |
+| MUSS | Gespeichert wird **ausdrücklich** (Knopf, `Cmd/Strg+S`); eine unfertige Tour übersteht Neuladen und Absturz trotzdem als lokaler Entwurf |
 | MUSS | Ortssuche (Ort, Gipfel, Hütte, Bahnhof) zum Springen auf der Karte |
 | MUSS | **POI-Kontext**, passend zur Aktivitätsart (siehe Abschnitt 3) |
 | MUSS | **Wetteraussicht** für Tourdatum und -region |
@@ -212,13 +243,27 @@ Der MVP-Schnitt ist „Mittel" (Abschnitt 7).
 | Prio | Anforderung |
 |---|---|
 | MUSS | Aufgezeichneter Track landet automatisch bei der geplanten Tour |
-| MUSS | Tourenarchiv als Liste **und** Karte, sortierbar |
+| MUSS | Tourenarchiv als Liste **und** Karte, sortierbar — **und zugleich der Startbildschirm** |
+| MUSS | Tourenkarte in der Liste zeigt Vorschaubild, Aktivitätsart, Datum und drei Kennzahlen |
 | MUSS | **GPX-Export** jeder Tour und jedes Tracks |
 | MUSS | Suche und Filter: Aktivitätsart, Länge, Aufstieg, Region, Datum, Stichwort |
 | MUSS | **Vergleich geplant ↔ gegangen/gefahren**: Abweichungen und Kennzahlen gegenübergestellt |
 | SOLL | Fotos und Notizen der Tour zugeordnet, auf der Karte platziert |
 | KANN | Jahres-/Gesamtstatistik, getrennt je Aktivitätsart |
 | KANN | Tourenbericht als Text, Alles-Export als ZIP |
+
+**Zum Startbildschirm.** Die App öffnet mit Tourenliste links und Karte rechts — dem Aufbau,
+den Komoot für seine Entdeckenseite benutzt, gefüllt mit **eigenen** Touren. Die Karte bleibt
+damit die Hauptsache (Abschnitt 7) und das Archiv ist nichts, was man erst suchen muss. Liste
+und Karte sind ein Bildschirm, nicht zwei: eine Tour überfahren hebt ihre Linie hervor, eine
+Linie überfahren holt ihre Karte in den Blick.
+
+**Vorschaubild ohne Fotos.** Komoots Kacheln zeigen Nutzerfotos. Es gibt keine, und beide
+Alternativen scheitern an Abschnitt 7: eine Kartengrafik serverseitig zu rendern bräuchte ein
+headless MapLibre samt Netzzugriff, ein Static-Map-Dienst wäre ein Fremddienst. Stattdessen
+zeigt die Karte den **Umriss der Tour** — die vereinfachte Route als Linie, ohne Untergrund.
+Sie gibt sich nicht als Karte aus; sie ist die Form der Tour, und die unterscheidet zwei
+Touren auf einen Blick besser als ein Foto vom Gipfel.
 
 ---
 
@@ -230,17 +275,59 @@ Der MVP-Schnitt ist „Mittel" (Abschnitt 7).
 - Aufgezeichnete Tracks überleben, bis sie erfolgreich synchronisiert sind
 - Sync-Konflikte überschreiben nichts
 
-### Bedienung — direkte Antwort auf den Komoot-Frust
-- **Karte ist die Hauptsache.** Bedienelemente treten zurück, kein Dashboard mit Kacheln
+### Bedienung — was von Komoot nicht übernommen wird
+
+- **Karte ist die Hauptsache.** Kein Dashboard mit Kacheln, keine Startseite, die von der Karte
+  wegführt
 - **Kein Beiwerk:** keine Vorschläge, keine Werbung, keine Community-Inhalte, kein Feed
 - **Keine Menüs für Standardaktionen.** Wegpunkt einfügen = Linie ziehen. Löschen = Rechtsklick.
   Umsortieren = in der Liste ziehen. Kennzahlen = immer sichtbar, nie erst aufklappen
 - **Ein Bildschirm, eine Aufgabe**
 - Die Aktivitätsart darf die Oberfläche **nicht verdoppeln** — sie schaltet Inhalte um, nicht Ansichten
-- Feldansicht: alles Wichtige ohne Scrollen und ohne Menü
-- Bei Sonnenlicht lesbar: hoher Kontrast, große Zahlen
 - Kartenlayer sparsam — nicht alle Routen gleichzeitig bunt übereinander
   *(erklärte Kritik am waymarkedtrails-Overlay)*
+- Keine Beschriftung auf fremden Routenlinien; die eigene Tour ist das Einzige, was auffallen darf
+
+> **Präzisierung (Nachtrag).** „Bedienelemente treten zurück" heißt **zurückhaltend im Gewicht**,
+> nicht **abwesend**. Eine Oberfläche ohne sichtbare Werkzeuge ist nicht ruhig, sie ist stumm —
+> und niemand findet Funktionen, die man nur durch Ausprobieren entdeckt. Der erste Planer war
+> genau so geraten und das war eine Fehllesung dieser Zeile.
+
+### Bedienung — was von Komoot gelernt wird
+
+- **Jede Aktion hat ein Symbol.** Ein Papierkorb ist ein Papierkorb; `×` als Textzeichen ist keiner.
+  Icons sind ein eigener, konsistenter Satz — eine Strichstärke, ein Raster, lokal gebündelt
+  (kein Nachladen, die Feldansicht ist offline)
+- **Gesten sind ein Zusatz, nie die einzige Tür.** Rechtsklick löscht — *und* daneben steht ein
+  Papierkorb, der auch mit dem Finger erreichbar ist. Das ist kein Widerspruch zu „keine Menüs":
+  ein sichtbarer Knopf ist kein Menü
+- **Leerzustände bieten etwas an**, statt einen Zustand zu beschreiben. Wer die App zum ersten
+  Mal öffnet, sieht, was zu tun ist — inklusive der Gesten, die es sonst nie erfährt
+- **Tourenlisten sind dicht und aussagekräftig:** Vorschaubild, Name, Aktivitätsart, Datum und
+  drei Kennzahlen auf einer Zeile. Eine Liste aus Namen ist verschenkter Platz
+- **Zahlen groß, mit Einheit, mit Beschriftung.** Die zwei wichtigsten Kennzahlen einer Tour
+  stehen größer als die übrigen; welche zwei das sind, entscheidet die Aktivitätsart
+- **Filter liegen offen** — als Chips über der Liste, nicht in einem Menü, nicht in einem Dialog
+- **Ein System, keine Sammlung von Einzelfällen.** Abstände, Radien, Schatten und Bewegungen
+  kommen aus einem Maßsatz. Ein Knopf, der fünfmal fünf verschiedene Knöpfe ist, sieht
+  selbstgebaut aus — und war genau der Zustand vor diesem Nachtrag
+
+### Darstellung
+
+- **Hell und Dunkel sind umschaltbar**, dazu „System". **Standard ist hell** — die warme
+  Kartenwelt ist der Normalfall; die Systemeinstellung stumm zu übernehmen hat die App
+  unfreiwillig düster gemacht
+- Die Umschaltung gilt auch für die Karte selbst: Schummerung, Höhenlinien, Beschriftung,
+  Routenfassung. Farben der Oberfläche und Farben der Karte kommen aus **einem** Satz Tokens
+  und dürfen nie auseinanderlaufen
+- Routenfarben folgen gedruckten Topo-Karten: **Wandern rot, Radfahren blau.** Semantische
+  Farben (auf Route / abseits / Warnung) sind davon getrennt und nie ein Akzent
+- Keine Webfonts. Systemschrift, damit offline nichts nachgeladen wird und nichts still auf
+  einen Ersatz zurückfällt
+- Feldansicht: alles Wichtige ohne Scrollen und ohne Menü, bei Sonnenlicht lesbar — hoher
+  Kontrast, große Zahlen, Griffflächen für den Daumen (mind. 44 px)
+- Bedienbar mit der Tastatur, sichtbarer Fokus, korrekte ARIA-Rollen. Nicht aus Prinzip,
+  sondern weil es dieselben Fehler aufdeckt, die auch mit der Maus stören
 
 ### Betrieb
 - Alles per Docker Compose auf dem kleinen Hetzner-Server
@@ -355,17 +442,47 @@ Capacitor-Hülle für Tracking in der Tasche
 
 ---
 
-## 9. Nächster Schritt
+## 9. Umsetzung
 
-Sobald die Variante feststeht, folgt der **technische Implementierungsplan** mit:
+### Was steht
 
-- Datenmodell (Postgres/PostGIS): Nutzer, Rollen, Tour, Route, Track, Wegpunkt, POI, Offline-Paket
+Planungsansicht am Laptop mit Karte, Wegpunkten (klicken, ziehen, umsortieren, Rechtsklick
+löscht), Routing über selbst gehostetes BRouter, Kennzahlen, Höhenprofil mit gekoppeltem
+Kartenmarker, Höhenlinien und Schummerung im Browser gerechnet. Die Aktivitätsart steht als
+Naht in **einer** Datei (`src/lib/geo/activity.ts`) mit der Regel, dass nirgends im Code
+`if (activityType === 'hike')` stehen darf.
+
+### Nächste Etappen
+
+Aus dem Nachtrag zu Abschnitt 7 folgt die Reihenfolge: **erst das Fundament, dann die
+Tourenliste.** Jede Etappe ist für sich prüfbar.
+
+| # | Etappe | Ergebnis |
+|---|---|---|
+| 1 | Gestaltungsmaße: Abstände, Radien, Ebenen, Bewegung, Schatten; Farbtokens vereinheitlicht | ein Maßsatz statt Einzelfälle |
+| 2 | Iconsatz, lokal gebündelt, eine Strichstärke; Musterseite `/stil` | Symbole für jede Aktion |
+| 3 | Bausteine: Knopf, Symbolknopf, Umschalter, Panel, Kennzahl, Leerzustand, Hinweis, Chip | fünf Knopfstile werden zwei Komponenten |
+| 4 | Hell/Dunkel vollständig, **inklusive Karte**, hell als Standard | Abschnitt 7 „Darstellung" erfüllt |
+| 5 | Naht erweitern: Icon, Betonung der Kennzahlen, Kurzsatz für Listen, POI-Symbole | dritte Aktivitätsart bleibt ein Eintrag |
+| 6 | Planer umgebaut: Kopfzeile mit Werkzeugen, einladender Leerzustand mit Gestenlegende, sichtbare Papierkörbe | die App sieht nicht mehr leer aus |
+| 7 | Datenbank: Drizzle, Tabelle `tours`, Route als PostGIS-Geometrie, Kennzahlen mitgeführt | Touren überleben das Neuladen |
+| 8 | Endpunkte zum Anlegen, Ändern, Löschen; Kennzahlen rechnet immer der Server | eine Schreibstelle, keine Abweichungen |
+| 9 | Speichern im Planer, `/planen/[id]`, lokaler Entwurf | Abschnitt 6.2 „Tour speichern" erfüllt |
+| 10 | Kartengrundlage aus `MapCanvas` herauslösen (reiner Umbau) | Voraussetzung für eine zweite Karte |
+| 11 | **Startbildschirm:** Tourenliste mit Umriss-Vorschau + Übersichtskarte, Filterchips, Sortierung | Abschnitt 6.5 „Archiv als Liste und Karte" |
+| 12 | GPX-Export, Sicherung mit einem Befehl | Abschnitt 6.5 und 7 „Backup" |
+
+Danach in der Reihenfolge des MVP-Schnitts: Anmeldung und Rollen · Ortssuche (Nominatim) ·
+OSM-Routen-Overlay und Weg B · GPX-Import (Weg C) · POIs · Wetter · Offline-Download ·
+Feldansicht · Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt.
+
+### Noch offen für einen eigenen Plan
+
 - Offline-Architektur: was in OPFS, was in IndexedDB, wie der Sync Konflikte vermeidet
-- Aufbau des eigenen Vektor-Overlays aus OSM (Wander- und Radrouten, Untergrund-Tags)
+- Eigenes Vektor-Overlay aus OSM (Wander- und Radrouten, Untergrund-Tags)
 - Serveraufteilung im Docker Compose und Speicherbudget für den kleinen Hetzner-Server
 - Zuschnitt der Offline-Pakete (Korridorbreite, Zoomtiefe, erwartete Größe je Tourtyp)
-- Aufbau der zwei Oberflächen: Planungsansicht (Laptop) und Feldansicht (Handy)
-- Reihenfolge der Umsetzung in überprüfbaren Etappen, jede für sich testbar
+- Feldansicht fürs Handy — bewusst **nicht** dieselbe Oberfläche in schmal (Abschnitt 2)
 
 ---
 

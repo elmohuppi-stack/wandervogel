@@ -12,6 +12,22 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 - **Höhenlinien und Schummerung** aus Höhendaten, im Browser berechnet
 - **Aktivitätsart** Wandern/Rad schaltet Routing-Profil, Zeitmodell, Farbe und Kennzahlen um
 
+## Woran gerade gearbeitet wird
+
+Der Planer rechnet richtig, sieht aber leer aus: keine Icons, fünf Knopfstile, kein
+Abstandsmaß, und eine Tour überlebt kein Neuladen. Der Vergleich mit Komoot hat das
+Zielbild geschärft — **das Handwerk übernehmen, das Beiwerk nicht** (siehe
+[Anforderungen §7](docs/01-anforderungen.md)). Daraus folgt die Reihenfolge:
+
+1. **Gestaltungsfundament** — Maße für Abstand, Radius, Ebene, Bewegung; ein lokaler
+   Iconsatz; Bausteine statt Einzelfälle; Hell/Dunkel umschaltbar, hell als Standard
+2. **Planer umbauen** — sichtbare Werkzeuge, ein Leerzustand, der die Gesten erklärt,
+   statt eines grauen Textkastens
+3. **Datenbank und Speichern** — Postgres/PostGIS, Route als Geometrie, Kennzahlen mitgeführt
+4. **Startbildschirm** — Tourenliste mit Umriss-Vorschau neben einer Übersichtskarte
+
+Die vollständige Etappenliste steht in [Anforderungen §9](docs/01-anforderungen.md).
+
 ## Noch nicht
 
 Offline-Download · Feldansicht fürs Handy · Anmeldung und Rollen · Datenbank
@@ -23,12 +39,14 @@ POIs · Wetter · Ortssuche · GPX-Import und -Export · Archiv
 Voraussetzungen: Node 22+, pnpm, Docker.
 
 ```bash
-pnpm install
 cp .env.example .env        # POSTGRES_PASSWORD setzen
-pnpm services               # Postgres/PostGIS + BRouter starten
-pnpm segments               # Routing-Segmente für Deutschland (~800 MB)
-pnpm dev                    # http://localhost:5180
+make install
+make segments               # Routing-Segmente für Deutschland (~800 MB)
+make start                  # Dienste + http://localhost:5180
 ```
+
+`make start` fährt Docker-Dienste und Entwicklungsserver im Hintergrund hoch,
+`make stop` beides wieder herunter. `make` allein zeigt alle Befehle.
 
 `pnpm segments` ohne Argument lädt Deutschland. Für einen schnellen Start genügt ein
 einzelnes Feld:
@@ -40,15 +58,23 @@ pnpm segments --alps        # Alpenraum
 
 Nach dem Nachladen von Segmenten: `docker compose restart brouter`.
 
-## Skripte
+## Befehle
 
 | Befehl | Wirkung |
 | --- | --- |
-| `pnpm dev` | Entwicklungsserver auf Port 5180, auch im WLAN erreichbar |
-| `pnpm build` / `pnpm preview` | Produktions-Build (adapter-node) |
-| `pnpm check` | Typen und Svelte prüfen |
-| `pnpm services` / `services:stop` / `services:logs` | Docker-Dienste |
-| `pnpm segments [FELD…]` | BRouter-Segmente laden |
+| `make start` / `make stop` / `make restart` | Dienste und Entwicklungsserver, Port 5180, auch im WLAN erreichbar |
+| `make dev` | Entwicklungsserver im Vordergrund, Strg-C beendet |
+| `make status` | läuft was? |
+| `make build` | Produktions-Build (adapter-node) |
+| `make preview` | gebaute App über `node build` auf Port 3000 |
+| `make check` | Typen und Svelte prüfen |
+| `make services` / `services-stop` / `logs` | nur die Docker-Dienste |
+| `make segments ARGS=E5_N45` | BRouter-Segmente laden |
+| `make clean` / `clean-all` | Build-Artefakte, zusätzlich `node_modules` |
+
+Logs der im Hintergrund gestarteten Server liegen in `.run/`. Die zugrunde
+liegenden `pnpm`-Skripte in [package.json](package.json) funktionieren
+unverändert weiter.
 
 ## Architektur in Kürze
 
@@ -70,6 +96,21 @@ Kennzahlen, Kartenlayer, POI-Gruppen, Offline-Vorbelegungen, Warnschwelle.
 > **Regel:** Im Code steht nirgendwo `if (activityType === 'hike')`.
 > Fehlt etwas, wird es ein Feld in der Aktivitätsdefinition — nicht eine Verzweigung
 > in der Oberfläche. Eine dritte Aktivitätsart soll ein Eintrag sein, kein Umbau.
+
+## Gestaltung in fünf Regeln
+
+Ausführlich in [Anforderungen §7](docs/01-anforderungen.md); hier das Nötigste beim Coden.
+
+1. **Jede Aktion hat ein Symbol.** Aus dem eigenen Iconsatz, eine Strichstärke, lokal
+   gebündelt — die Feldansicht darf nichts nachladen. Kein `×` und kein `⠿` als Textzeichen.
+2. **Gesten sind ein Zusatz, nie die einzige Tür.** Rechtsklick löscht *und* daneben steht
+   ein Papierkorb. Was nur mit der Maus geht, gibt es auf dem Handy nicht.
+3. **Maße kommen aus Tokens.** Abstand, Radius, Ebene, Bewegung, Schatten stehen in
+   [`src/app.css`](src/app.css). Eine neue Zahl im `<style>`-Block ist ein Fehler.
+4. **Farben der Oberfläche und der Karte sind ein Satz.** MapLibre liest dieselben Tokens.
+   Wandern rot, Radfahren blau; semantische Farben nie als Akzent.
+5. **Leerzustände bieten etwas an.** Sie beschreiben keinen Zustand, sie zeigen den nächsten
+   Schritt — inklusive der Gesten, die man sonst nie erfährt.
 
 ## Datenquellen
 
@@ -102,3 +143,22 @@ Festgehalten, damit sie nicht zweimal auftreten:
   `LANG=de_DE.utf8`. Das Image erzeugt diese Locale nicht, `initdb` scheitert endlos.
 - **PostGIS-Image:** `postgis/postgis` ist amd64-only. `imresamu/postgis` ist derselbe
   Inhalt als Multi-Arch — nötig für Apple Silicon.
+
+### Fallen, die schon erkannt, aber noch nicht getroffen sind
+
+Beim Planen der nächsten Etappen aufgefallen — hier notiert, damit sie niemanden kalt erwischen:
+
+- **`light-dark()` und `getComputedStyle` vertragen sich nicht.** Eigene Eigenschaften geben
+  den rohen Tokenstrom zurück, also wörtlich `light-dark(#a08a6b, #4d5a4f)`. MapLibre kann
+  das nicht lesen, Höhenlinien und Schummerung fallen **still** aus — und zwar schon beim
+  ersten Laden, nicht erst beim Umschalten. Farbtokens müssen über ein Sondierelement
+  aufgelöst werden (`style.color = var(--x)`, dann `getComputedStyle().color`).
+- **`drizzle-kit` und die PostGIS-Nebenschemata.** Das Image bringt `tiger`, `tiger_data`,
+  `topology` und `spatial_ref_sys` mit. Ohne `schemaFilter: ['public']` **und**
+  `extensionsFilters: ['postgis']` schlägt `drizzle-kit push` vor, die komplette
+  PostGIS-Installation zu löschen. Das ist die einzige Stelle, die Daten zerstören kann.
+- **`map.setStyle()` wirft alle Laufzeit-Ebenen weg** — Relief, Höhenlinien, Route und
+  Wegpunkte müssten neu aufgebaut werden. Deshalb kommt der dunkle *Kartenstil* erst mit den
+  eigenen Protomaps-Dateien; bis dahin dunkle Oberfläche über heller Karte.
+- **Drizzles `geometry()` kann nur Punkte.** Eine `LineStringZ`-Spalte braucht `customType`
+  für die DDL und rohes SQL (`ST_AsGeoJSON` / `ST_GeomFromGeoJSON`) für Lesen und Schreiben.
