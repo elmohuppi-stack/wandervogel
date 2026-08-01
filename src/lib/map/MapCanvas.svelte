@@ -487,6 +487,13 @@
 		}
 	}
 
+	/** Der gezeigte Ausschnitt als `[minLon, minLat, maxLon, maxLat]`. */
+	export function bounds(): [number, number, number, number] | null {
+		if (!map) return null;
+		const b = map.getBounds();
+		return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+	}
+
 	/** Ausschnitt auf eine beliebige Linie setzen. */
 	export function fitToLine(line: [number, number][], padding = 60) {
 		if (!map || line.length < 2) return;

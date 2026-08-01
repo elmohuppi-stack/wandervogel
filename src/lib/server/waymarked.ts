@@ -31,7 +31,12 @@ export interface RoutenTreffer {
 	stufe?: string;
 	/** „Weinrotes ‚N' auf weißem Grund" — auf Deutsch, aus OSM. */
 	markierung?: string;
+	/** Kennung des Markierungszeichens, über /api/routen/symbol/… abrufbar. */
+	symbolId?: string;
 }
+
+/** Fest verdrahtete Reihenfolge: Fernwege zuerst, Lokales zuletzt. */
+const RANG: Record<string, number> = { INT: 0, NAT: 1, REG: 2, LOC: 3 };
 
 export interface RoutenDetail extends RoutenTreffer {
 	/** Länge der erfassten Linie in Metern. */
@@ -166,6 +171,87 @@ export async function sucheRouten(
 	return treffer;
 }
 
+/* --- Was liegt in diesem Ausschnitt? ------------------------------------ */
+
+/**
+ * Routen im Kartenausschnitt.
+ *
+ * Die Antwort auf „woher soll ich die Namen kennen". Eine Suche, die einen
+ * Namen voraussetzt, hilft beim Entdecken nicht.
+ *
+ * **Falle:** die Bounding Box muss in Web-Mercator angegeben werden, nicht
+ * in Lon/Lat. Mit Gradzahlen antwortet der Dienst mit HTTP 200 und einer
+ * leeren Liste — es sieht also aus, als gäbe es dort keine Wege.
+ */
+export async function routenImGebiet(
+	bbox: [number, number, number, number],
+	activityType: ActivityType,
+	fetchFn: typeof fetch = fetch,
+	limit = 80
+): Promise<{ treffer: RoutenTreffer[]; abgeschnitten: boolean }> {
+	const [a, b] = [lonLatToMercator(bbox[0], bbox[1]), lonLatToMercator(bbox[2], bbox[3])];
+	const m = [a[0], a[1], b[0], b[1]].map((n) => n.toFixed(1)).join(',');
+
+	const key = `g:${activityType}:${m}:${limit}`;
+	const gecacht = cache.get(key);
+	if (gecacht) return gecacht as { treffer: RoutenTreffer[]; abgeschnitten: boolean };
+
+	const url = `${basis(activityType)}/api/v1/list/by_area?bbox=${m}&limit=${limit}`;
+	const roh = (await holen(url, fetchFn)) as { results?: RohGebiet[] };
+	const ergebnisse = roh.results ?? [];
+
+	const treffer: RoutenTreffer[] = ergebnisse
+		.filter((r) => typeof r.id === 'number')
+		.map((r) => ({
+			id: r.id as number,
+			// Manche Relationen haben keinen Namen, nur ein Kürzel (E8).
+			name: r.name?.trim() || r.ref?.trim() || `Ohne Namen (${r.id})`,
+			ref: r.ref?.trim() || undefined,
+			stufe: STUFEN[r.group ?? ''] ?? undefined,
+			symbolId: r.symbol_id || undefined
+		}))
+		.sort((x, y) => {
+			const rx = RANG[ergebnisse.find((e) => e.id === x.id)?.group ?? ''] ?? 9;
+			const ry = RANG[ergebnisse.find((e) => e.id === y.id)?.group ?? ''] ?? 9;
+			return rx - ry || x.name.localeCompare(y.name, 'de');
+		});
+
+	const raus = { treffer, abgeschnitten: ergebnisse.length >= limit };
+	merken(key, raus);
+	return raus;
+}
+
+/** Das Markierungszeichen als SVG — über den eigenen Server, mit Vorrat. */
+export async function holeSymbol(
+	symbolId: string,
+	activityType: ActivityType,
+	fetchFn: typeof fetch = fetch
+): Promise<string> {
+	const key = `y:${activityType}:${symbolId}`;
+	const gecacht = cache.get(key);
+	if (gecacht) return gecacht as string;
+
+	await warten();
+	const res = await fetchFn(`${basis(activityType)}/api/v1/symbols/id/${symbolId}`, {
+		headers: { 'user-agent': KENNUNG },
+		signal: AbortSignal.timeout(10000)
+	});
+	if (!res.ok) throw new WaymarkedError('Zeichen nicht gefunden.', 'not_found');
+	const svg = await res.text();
+	merken(key, svg);
+	return svg;
+}
+
+function lonLatToMercator(lon: number, lat: number): [number, number] {
+	const x = (lon / 180) * 20037508.34;
+	// An den Polen läuft der Logarithmus davon; die Karte zeigt sie ohnehin
+	// nicht, aber ein NaN in der Adresse wäre ein stiller Fehler.
+	const begrenzt = Math.max(-85.05, Math.min(85.05, lat));
+	const y =
+		(Math.log(Math.tan(Math.PI / 4 + (begrenzt * Math.PI) / 360)) / Math.PI) * 20037508.34;
+	return [x, y];
+}
+
 /* --- Geometrie ---------------------------------------------------------- */
 
 export async function holeRoute(
@@ -207,6 +293,7 @@ export async function holeRoute(
 		operator: d.operator || undefined,
 		stufe: STUFEN[d.group ?? ''] ?? STUFEN[d.tags?.network ?? ''] ?? undefined,
 		markierung: d.symbol_description || undefined,
+		symbolId: d.symbol_id || undefined,
 		itinerary: Array.isArray(d.itinerary) ? d.itinerary : undefined,
 		lengthM: Number(d.route?.length) || 0,
 		coordinates,
@@ -227,6 +314,14 @@ interface RohTreffer {
 	group?: string;
 }
 
+interface RohGebiet {
+	id?: number;
+	name?: string;
+	ref?: string;
+	group?: string;
+	symbol_id?: string;
+}
+
 interface RohWeg {
 	route_type?: string;
 	tags?: Record<string, string>;
@@ -243,6 +338,7 @@ interface RohDetail {
 	operator?: string;
 	group?: string;
 	symbol_description?: string;
+	symbol_id?: string;
 	itinerary?: string[];
 	tags?: Record<string, string>;
 	route?: RohWeg;

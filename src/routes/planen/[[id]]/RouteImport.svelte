@@ -24,6 +24,7 @@
 		ref?: string;
 		operator?: string;
 		stufe?: string;
+		symbolId?: string;
 	}
 
 	export interface Vorschau {
@@ -45,6 +46,8 @@
 		vorschau: Vorschau | null;
 		/** Übernahme läuft — Höhen holen dauert bei einem Fernweg. */
 		laeuftUebernahme?: boolean;
+		/** Aktueller Kartenausschnitt, für „was liegt hier". */
+		bounds?: () => [number, number, number, number] | null;
 		onAdopt: (v: Vorschau) => void;
 	}
 
@@ -52,6 +55,7 @@
 		activityType,
 		vorschau = $bindable(),
 		laeuftUebernahme = false,
+		bounds,
 		onAdopt
 	}: Props = $props();
 
@@ -65,6 +69,13 @@
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let lauf = 0;
 
+	/** Wege im Ausschnitt — was man sieht, wenn man nichts getippt hat. */
+	let gebiet = $state<Treffer[]>([]);
+	let gebietVoll = $state(false);
+	let gebietLaeuft = $state(false);
+
+	const liste = $derived(text.trim().length >= 3 ? treffer : gebiet);
+
 	const def = $derived(activity(activityType));
 
 	/** Von der Seite aus aufgerufen — der Knopf steht im Leerzustand. */
@@ -73,6 +84,38 @@
 		offen = true;
 		// Nach dem Einhängen fokussieren, sonst gibt es das Feld noch nicht.
 		setTimeout(() => feld?.focus(), 0);
+		void gebietLaden();
+	}
+
+	/**
+	 * Was liegt im aktuellen Ausschnitt?
+	 *
+	 * Eine Suche, die den Namen voraussetzt, hilft beim Entdecken nicht.
+	 * Deshalb steht die Liste der Umgebung da, bevor man etwas tippt.
+	 */
+	async function gebietLaden() {
+		const b = bounds?.();
+		if (!b) return;
+		gebietLaeuft = true;
+		fehler = null;
+		try {
+			const res = await fetch(
+				`/api/routen/gebiet?bbox=${b.map((n) => n.toFixed(5)).join(',')}&activityType=${activityType}`
+			);
+			const d = await res.json();
+			if (!res.ok) {
+				fehler = d.error ?? 'Umgebung konnte nicht geladen werden';
+				gebiet = [];
+			} else {
+				gebiet = d.results;
+				gebietVoll = d.abgeschnitten;
+			}
+		} catch {
+			fehler = 'Server nicht erreichbar';
+			gebiet = [];
+		} finally {
+			gebietLaeuft = false;
+		}
 	}
 
 	export function gpxWaehlen() {
@@ -266,7 +309,7 @@
 			<input
 				bind:this={feld}
 				type="text"
-				placeholder="{def.routeLayerLabel} nach Namen suchen …"
+				placeholder="Name suchen oder Liste unten durchsehen …"
 				value={text}
 				oninput={(e) => getippt(e.currentTarget.value)}
 				onkeydown={(e) => e.key === 'Escape' && schliessen()}
@@ -275,30 +318,64 @@
 				spellcheck="false"
 			/>
 			{#if laeuft}<Icon name="loader" size={14} class="spin" />{/if}
+			<IconButton
+				icon="crosshair"
+				label="Umgebung neu absuchen"
+				size="sm"
+				onclick={gebietLaden}
+			/>
 			<IconButton icon="close" label="Schließen" size="sm" onclick={schliessen} />
 		</div>
 
 		{#if fehler}
 			<Alert tone="bad">{fehler}</Alert>
-		{:else if treffer.length > 0}
+		{/if}
+
+		{#if liste.length > 0}
+			<p class="kopfzeile">
+				{#if text.trim().length >= 3}
+					{liste.length} Treffer
+				{:else}
+					{liste.length} {def.routeLayerLabel} im Kartenausschnitt{gebietVoll ? ' (Ausschnitt verkleinern für mehr Genauigkeit)' : ''}
+				{/if}
+			</p>
 			<ul class="liste">
-				{#each treffer as t (t.id)}
+				{#each liste as t (t.id)}
 					<li>
 						<button type="button" onclick={() => laden(t)}>
-							<Icon name="route" size={14} />
-							<span>
+							{#if t.symbolId}
+								<!-- Das Zeichen, das im Wald am Baum klebt. -->
+								<img
+									class="zeichen"
+									src="/api/routen/symbol/{t.symbolId}?activityType={activityType}"
+									alt=""
+									width="20"
+									height="20"
+									loading="lazy"
+								/>
+							{:else}
+								<Icon name="route" size={14} />
+							{/if}
+							<span class="namen">
 								<b>{t.name}</b>
-								<span class="unter">
-									{[t.stufe, t.operator, t.ref].filter(Boolean).join(' · ')}
-								</span>
+								{#if t.stufe || t.operator || t.ref}
+									<span class="unter">
+										{[t.stufe, t.operator, t.ref].filter(Boolean).join(' · ')}
+									</span>
+								{/if}
 							</span>
 						</button>
 					</li>
 				{/each}
 			</ul>
+		{:else if gebietLaeuft}
+			<p class="tipp">Sucht die Umgebung ab …</p>
+		{:else if text.trim().length >= 3}
+			<p class="tipp">Nichts gefunden. Tippfehler? Oder den Ausschnitt verschieben und leeren.</p>
 		{:else}
 			<p class="tipp">
-				Zum Beispiel „Nibelungensteig", „Pfälzer Waldpfad" oder ein Kürzel wie „HW 3".
+				Hier stehen die markierten Wege aus dem Kartenausschnitt. Verschiebe die Karte
+				hinter diesem Fenster, um andere zu sehen — oder tippe einen Namen.
 			</p>
 		{/if}
 	</div>
@@ -472,17 +549,31 @@
 		}
 	}
 
+	.kopfzeile {
+		margin: var(--sp-4) 0 0;
+		font-size: var(--fs-xs);
+		color: var(--ink-3);
+	}
+
+	.zeichen {
+		flex: none;
+		width: 20px;
+		height: 20px;
+		border-radius: var(--r-xs);
+		background: var(--surface);
+	}
+
 	.liste {
 		list-style: none;
-		margin: var(--sp-4) 0 0;
+		margin: var(--sp-3) 0 0;
 		padding: 0;
-		max-height: 18rem;
+		max-height: 24rem;
 		overflow-y: auto;
 		border-top: 1px solid var(--edge-soft);
 	}
 	.liste button {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		gap: var(--sp-3);
 		width: 100%;
 		padding: var(--sp-4);

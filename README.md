@@ -20,8 +20,9 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 - **Hell und Dunkel** umschaltbar, hell als Standard — die Karte geht mit
 - **Ortssuche** und **eigener Standort** auf beiden Karten
 - **Markiertes Wegenetz** ein- und ausblendbar, passend zur Aktivitätsart
-- **Vorhandene Route übernehmen** (Weg B): markierte OSM-Routen nach Namen suchen,
-  mit Markierung, Betreiber und Untergrund — und als eigene Tour übernehmen
+- **Vorhandene Route übernehmen** (Weg B): die markierten Wege im Kartenausschnitt
+  auflisten *oder* nach Namen suchen — mit dem echten Markierungszeichen, Betreiber
+  und Untergrund — und als eigene Tour übernehmen
 - **GPX importieren** (Weg C), mit oder ohne Höhen in der Datei
 - **Höhen aus dem eigenen Höhenmodell**, im Browser aus den Terrarium-Kacheln gelesen
 - **Sicherung** der Nutzdaten mit einem Befehl
@@ -192,6 +193,10 @@ Festgehalten, damit sie nicht zweimal auftreten:
 - **Der Neuberechnungs-Effekt darf nicht beim Einhängen feuern.** Sonst wird eine
   gerade aus der Datenbank geladene Route neu geroutet — und wenn BRouter aus ist,
   durch `null` ersetzt. Ein Schlüssel aus Aktivitätsart und Wegpunkten verhindert das.
+- **Waymarked Trails will die Bounding Box in Web-Mercator.** Mit Gradzahlen
+  antwortet der Dienst mit HTTP 200 und einer *leeren* Liste — es sieht also
+  aus, als lägen dort keine Wege. Hat mich einmal zu der falschen Aussage
+  gebracht, es gebe keinen Endpunkt für „was liegt hier".
 - **Aus einer OSM-Relation wird keine Route durch Neurouten.** Am
   Nibelungensteig gemessen: 25 Wegpunkte → 106,3 km statt 126,1 km (−16 %),
   60 Wegpunkte immer noch −7 %. Der Router schneidet Kurven ab. Die Linie

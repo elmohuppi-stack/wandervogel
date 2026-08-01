@@ -466,6 +466,7 @@
 			activityType={tour.activityType}
 			bind:vorschau
 			laeuftUebernahme={uebernimmt}
+			bounds={() => mapRef?.bounds() ?? null}
 			onAdopt={uebernehmen}
 		/>
 
