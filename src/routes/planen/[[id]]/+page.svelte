@@ -26,6 +26,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import MetricGrid from '$lib/ui/MetricGrid.svelte';
 	import Panel from '$lib/ui/Panel.svelte';
+	import PlaceSearch from '$lib/ui/PlaceSearch.svelte';
 	import PlannerTopbar from './PlannerTopbar.svelte';
 	import StartCard from './StartCard.svelte';
 	import WaypointList from './WaypointList.svelte';
@@ -47,6 +48,7 @@
 
 	let saving = $state(false);
 	let saveError = $state<string | null>(null);
+	let ortungsfehler = $state<string | null>(null);
 	/** Fingerabdruck des zuletzt gespeicherten Standes. */
 	let savedSignature = $state(untrack(() => signature(data.tour ?? emptyTour(DEFAULT_ACTIVITY))));
 
@@ -305,6 +307,7 @@
 		{routing}
 		{saving}
 		{dirty}
+		saved={!!tour.id}
 		canSave={!!route}
 		onSave={save}
 	/>
@@ -322,14 +325,37 @@
 			onRemoveWaypoint={removeWaypoint}
 		/>
 
+		<!-- Werkzeuge der Karte liegen auf der Karte, nicht in der Kopfzeile:
+		     sie gehören zu dem, worauf sie wirken. -->
+		<div class="werkzeuge-links">
+			<PlaceSearch onSelect={(o) => mapRef?.flyToPlace(o.lon, o.lat, o.bbox)} />
+		</div>
+
+		<div class="werkzeuge-rechts">
+			<IconButton
+				icon="location-fix"
+				label="Auf meinen Standort"
+				onclick={async () => {
+					await mapRef?.locate();
+					ortungsfehler = mapRef?.locateState().error ?? null;
+				}}
+			/>
+		</div>
+
 		{#if tour.waypoints.length === 0}
 			<StartCard {def} />
 		{/if}
 
-		{#if routeError || saveError}
+		{#if routeError || saveError || ortungsfehler}
 			<div class="fehler">
-				<Alert tone="bad" onDismiss={() => (saveError = null)}>
-					{routeError ?? saveError}
+				<Alert
+					tone="bad"
+					onDismiss={() => {
+						saveError = null;
+						ortungsfehler = null;
+					}}
+				>
+					{routeError ?? saveError ?? ortungsfehler}
 				</Alert>
 			</div>
 		{/if}
@@ -468,6 +494,28 @@
 		background: var(--surface);
 		border-left: 1px solid var(--edge);
 		overflow: hidden;
+	}
+
+	.werkzeuge-links {
+		position: absolute;
+		top: var(--sp-5);
+		left: var(--sp-5);
+		z-index: var(--z-map-ui);
+		width: min(22rem, calc(100% - 2 * var(--sp-5) - var(--hit-sm) - var(--sp-4)));
+	}
+
+	.werkzeuge-rechts {
+		position: absolute;
+		top: var(--sp-5);
+		right: var(--sp-5);
+		z-index: var(--z-map-ui);
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		background: var(--surface);
+		border: 1px solid var(--edge);
+		border-radius: var(--r-sm);
+		box-shadow: var(--el-2);
 	}
 
 	.fehler {

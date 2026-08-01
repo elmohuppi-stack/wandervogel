@@ -19,6 +19,8 @@
 		saving: boolean;
 		/** Es gibt ungespeicherte Änderungen. */
 		dirty: boolean;
+		/** Die Tour liegt schon in der Datenbank. */
+		saved: boolean;
 		/** Ohne Route gibt es nichts zu speichern. */
 		canSave: boolean;
 		onSave: () => void;
@@ -30,14 +32,16 @@
 		routing,
 		saving,
 		dirty,
+		saved,
 		canSave,
 		onSave
 	}: Props = $props();
 
-	// Drei Zustände, drei Beschriftungen. „Gespeichert" bleibt stehen statt
-	// zu verschwinden — ein Knopf, der wegspringt, lässt zweifeln, ob es
-	// geklappt hat.
-	const beschriftung = $derived(saving ? 'Speichert …' : dirty ? 'Speichern' : 'Gespeichert');
+	// „Gespeichert" darf nur stehen, wenn wirklich schon gespeichert wurde.
+	// Eine brandneue Tour ist nicht „nicht geändert", sie ist ungespeichert —
+	// das zu verwechseln wäre eine Lüge im ruhigsten Moment der Oberfläche.
+	const fertig = $derived(saved && !dirty);
+	const beschriftung = $derived(saving ? 'Speichert …' : fertig ? 'Gespeichert' : 'Speichern');
 
 	// Aus der Naht erzeugt, nicht aufgezählt: eine dritte Aktivitätsart
 	// erscheint hier von selbst.
@@ -72,11 +76,11 @@
 	<ThemeToggle size="sm" />
 
 	<Button
-		variant={dirty ? 'primary' : 'quiet'}
+		variant={fertig ? 'quiet' : 'primary'}
 		size="sm"
-		icon={dirty || saving ? 'save' : 'check'}
+		icon={fertig && !saving ? 'check' : 'save'}
 		loading={saving}
-		disabled={!canSave || !dirty}
+		disabled={!canSave || fertig}
 		title={canSave ? 'Tour speichern (Strg+S)' : 'Erst eine Route berechnen lassen'}
 		onclick={onSave}
 	>

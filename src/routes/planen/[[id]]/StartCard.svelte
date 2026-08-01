@@ -50,7 +50,9 @@
 <style>
 	.card {
 		position: absolute;
-		top: var(--sp-5);
+		/* Unter der Werkzeugzeile: Suche und Standortknopf liegen oben und
+		   dürfen bei schmalem Fenster nicht überdeckt werden. */
+		top: calc(var(--sp-5) + var(--hit-sm) + var(--sp-4));
 		left: 50%;
 		translate: -50% 0;
 		z-index: var(--z-map-ui);

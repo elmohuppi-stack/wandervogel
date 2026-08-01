@@ -49,8 +49,14 @@
 	const SRC_ROUTE = 'wv-route';
 	const SRC_WP = 'wv-waypoints';
 	const SRC_MARKER = 'wv-marker';
+	const SRC_POS = 'wv-position';
 	const LYR_ROUTE = 'wv-route-line';
 	const LYR_WP = 'wv-waypoints-circle';
+
+	/** Eigener Standort, sobald er einmal abgefragt wurde. */
+	let position = $state<{ lon: number; lat: number; accuracyM: number } | null>(null);
+	let locating = $state(false);
+	let locateError = $state<string | null>(null);
 
 	function routeColor(): string {
 		return resolveColorToken(activity(activityType).mapColorVar, '#b3382a');
@@ -101,6 +107,47 @@
 			type: 'FeatureCollection',
 			features: [
 				{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [lon, lat] } }
+			]
+		};
+	}
+
+	/**
+	 * Standort mit Genauigkeitskreis.
+	 *
+	 * Der Kreis ist ein echtes Vieleck in Metern, kein `circle-radius` in
+	 * Pixeln: eine Pixelangabe bliebe beim Zoomen gleich groß und behauptete
+	 * damit beim Herauszoomen eine Genauigkeit von Kilometern. Was die
+	 * Ortung nicht weiß, darf die Karte nicht behaupten.
+	 */
+	function positionFeatures(): FeatureCollection {
+		if (!position) return EMPTY;
+		const { lon, lat, accuracyM } = position;
+
+		const SEITEN = 64;
+		const mProGradLat = 111320;
+		const mProGradLon = mProGradLat * Math.cos((lat * Math.PI) / 180);
+		const ring: [number, number][] = [];
+		for (let i = 0; i <= SEITEN; i++) {
+			const w = (i / SEITEN) * 2 * Math.PI;
+			ring.push([
+				lon + (Math.cos(w) * accuracyM) / mProGradLon,
+				lat + (Math.sin(w) * accuracyM) / mProGradLat
+			]);
+		}
+
+		return {
+			type: 'FeatureCollection',
+			features: [
+				{
+					type: 'Feature',
+					properties: { kind: 'accuracy' },
+					geometry: { type: 'Polygon', coordinates: [ring] }
+				},
+				{
+					type: 'Feature',
+					properties: { kind: 'dot' },
+					geometry: { type: 'Point', coordinates: [lon, lat] }
+				}
 			]
 		};
 	}
@@ -173,6 +220,46 @@
 					'circle-color': routeColor(),
 					'circle-stroke-color': resolveColorToken('--route-casing', '#ffffff'),
 					'circle-stroke-width': 2
+				}
+			});
+
+			/* --- eigener Standort, über allem --- */
+
+			m.addSource(SRC_POS, { type: 'geojson', data: positionFeatures() });
+
+			m.addLayer({
+				id: 'wv-position-accuracy',
+				type: 'fill',
+				source: SRC_POS,
+				filter: ['==', ['get', 'kind'], 'accuracy'],
+				paint: {
+					'fill-color': resolveColorToken('--position', '#2f6fd0'),
+					'fill-opacity': 0.12
+				}
+			});
+
+			m.addLayer({
+				id: 'wv-position-ring',
+				type: 'line',
+				source: SRC_POS,
+				filter: ['==', ['get', 'kind'], 'accuracy'],
+				paint: {
+					'line-color': resolveColorToken('--position', '#2f6fd0'),
+					'line-width': 1,
+					'line-opacity': 0.5
+				}
+			});
+
+			m.addLayer({
+				id: 'wv-position-dot',
+				type: 'circle',
+				source: SRC_POS,
+				filter: ['==', ['get', 'kind'], 'dot'],
+				paint: {
+					'circle-radius': 6,
+					'circle-color': resolveColorToken('--position', '#2f6fd0'),
+					'circle-stroke-color': resolveColorToken('--route-casing', '#ffffff'),
+					'circle-stroke-width': 2.5
 				}
 			});
 
@@ -321,6 +408,94 @@
 			map.setPaintProperty(layer, prop, value);
 		}
 	});
+
+	$effect(() => {
+		if (!ready) return;
+		void position;
+		setData(SRC_POS, positionFeatures());
+	});
+
+	/* ------------------------------------------------------------------
+	   Von außen aufrufbar
+	   ------------------------------------------------------------------ */
+
+	/**
+	 * Eigenen Standort bestimmen und anfahren.
+	 *
+	 * Einmalig, nicht als Dauerbeobachtung: beim Planen am Laptop will man
+	 * wissen, wo man ist, nicht verfolgt werden. Die Feldansicht bekommt
+	 * später ein watchPosition.
+	 */
+	export async function locate(): Promise<void> {
+		if (locating) return;
+		locateError = null;
+
+		if (!('geolocation' in navigator)) {
+			locateError = 'Dieser Browser kennt keine Ortung.';
+			return;
+		}
+
+		locating = true;
+		try {
+			const pos = await new Promise<GeolocationPosition>((ok, fail) =>
+				navigator.geolocation.getCurrentPosition(ok, fail, {
+					enableHighAccuracy: true,
+					timeout: 12000,
+					maximumAge: 30000
+				})
+			);
+			position = {
+				lon: pos.coords.longitude,
+				lat: pos.coords.latitude,
+				accuracyM: Math.max(pos.coords.accuracy, 5)
+			};
+			map?.flyTo({
+				center: [position.lon, position.lat],
+				zoom: Math.max(map.getZoom(), 14),
+				duration: prefersReducedMotion() ? 0 : 600
+			});
+		} catch (e) {
+			const code = (e as GeolocationPositionError)?.code;
+			locateError =
+				code === 1
+					? 'Ortung abgelehnt. Im Browser für diese Seite erlauben.'
+					: code === 3
+						? 'Ortung hat zu lange gedauert.'
+						: 'Standort nicht ermittelbar.';
+		} finally {
+			locating = false;
+		}
+	}
+
+	export function locateState() {
+		return { locating, error: locateError, hasPosition: position !== null };
+	}
+
+	/** Auf einen Ort aus der Suche springen. */
+	export function flyToPlace(
+		lon: number,
+		lat: number,
+		bbox?: [number, number, number, number]
+	) {
+		if (!map) return;
+		const duration = prefersReducedMotion() ? 0 : 600;
+
+		// Eine Stadt hat eine Ausdehnung, ein Gipfel nicht. Nominatim gibt
+		// auch für Punkte eine winzige Box zurück — die würde bis in den
+		// Maximalzoom springen.
+		const gross = bbox && (bbox[2] - bbox[0] > 0.002 || bbox[3] - bbox[1] > 0.002);
+		if (gross && bbox) {
+			map.fitBounds(
+				[
+					[bbox[0], bbox[1]],
+					[bbox[2], bbox[3]]
+				],
+				{ padding: 80, maxZoom: 15, duration }
+			);
+		} else {
+			map.flyTo({ center: [lon, lat], zoom: 14, duration });
+		}
+	}
 
 	/** Ausschnitt auf die Tour setzen. Von außen aufrufbar. */
 	export function fitToRoute(padding = 60) {

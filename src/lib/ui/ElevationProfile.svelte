@@ -85,7 +85,7 @@
 	}
 </script>
 
-<div class="profile" data-collapsed={collapsed}>
+<div class="profile" data-collapsed={collapsed} data-plot={!collapsed && hasProfile}>
 	<div class="head">
 		<Icon name="profile" size={14} class="titel-icon" />
 		<span class="label">Höhenprofil</span>
@@ -118,7 +118,9 @@
 		</button>
 	</div>
 
-	{#if !collapsed}
+	<!-- Ohne Route auch keine leere Zeichenfläche: 132 px Nichts unter der
+	     Karte sind kein Profil, sondern verschenkter Platz. -->
+	{#if !collapsed && hasProfile}
 		<div
 			class="plot"
 			bind:this={wrap}
@@ -156,24 +158,31 @@
 </div>
 
 <style>
+	/**
+	 * Die Höhe hängt am Inhalt, nicht am Zustand.
+	 *
+	 * Vorher galt --profile-h immer, außer beim Einklappen. Ohne Route
+	 * standen damit 132 px leere Zeichenfläche unter der Karte. Kein
+	 * Übergang auf der Höhe: der WebGL-Kontext der Karte müsste bei jedem
+	 * Zwischenschritt neu vermessen werden, das ruckelt sichtbar.
+	 */
 	.profile {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		height: var(--profile-h);
-		padding: 0.45rem 0.8rem 0.55rem;
+		gap: var(--sp-2);
+		height: auto;
+		padding: var(--sp-3) var(--sp-5) var(--sp-4);
 		border-top: 1px solid var(--edge-soft);
 		background: var(--surface);
 	}
-	.profile[data-collapsed='true'] {
-		height: auto;
-		padding-bottom: 0.45rem;
+	.profile[data-plot='true'] {
+		height: var(--profile-h);
 	}
 
 	.head {
 		display: flex;
 		align-items: center;
-		gap: 0.8rem;
+		gap: var(--sp-5);
 		font-size: var(--fs-xs);
 		color: var(--ink-3);
 	}
@@ -223,10 +232,10 @@
 		flex: none;
 		display: flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: var(--sp-3);
 		font-size: var(--fs-xs);
 		font-weight: 550;
-		padding: 0.15rem 0.35rem;
+		padding: var(--sp-1) var(--sp-3);
 		border: 1px solid transparent;
 		border-radius: var(--r-xs);
 		background: transparent;

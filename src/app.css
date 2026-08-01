@@ -79,6 +79,11 @@
 	   kräftige Topo-Rot, also immer Weiß. */
 	--map-on-route: #ffffff;
 
+	/* Eigener Standort. Blau ist dafür Konvention — bewusst heller und
+	   kühler als --map-route-bike, damit die Radroute und der eigene Punkt
+	   auf derselben Karte nicht verschwimmen. */
+	--position: #2f8fe0;
+
 	/* Semantik — nur für Zustände, nicht als Akzent */
 	--ok: light-dark(#2e7d53, #6cc38d);
 	--ok-bg: light-dark(#e2efe6, #1d3427);

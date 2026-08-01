@@ -39,6 +39,11 @@ export function paintFor(activityType: ActivityType): Paint[] {
 
 		['wv-waypoints-circle', 'circle-color', route],
 		['wv-waypoints-circle', 'circle-stroke-color', casing],
-		['wv-waypoints-label', 'text-color', resolveColorToken('--map-on-route', '#ffffff')]
+		['wv-waypoints-label', 'text-color', resolveColorToken('--map-on-route', '#ffffff')],
+
+		['wv-position-accuracy', 'fill-color', resolveColorToken('--position', '#2f8fe0')],
+		['wv-position-ring', 'line-color', resolveColorToken('--position', '#2f8fe0')],
+		['wv-position-dot', 'circle-color', resolveColorToken('--position', '#2f8fe0')],
+		['wv-position-dot', 'circle-stroke-color', casing]
 	];
 }
