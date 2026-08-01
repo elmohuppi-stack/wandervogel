@@ -398,12 +398,23 @@
 
 		{#if route || tour.id}
 			<Panel>
+				<div class="aktionen">
 				{#if route}
 					<Button variant="quiet" wide icon="crosshair" onclick={() => mapRef?.fitToRoute()}>
 						Auf Tour zentrieren
 					</Button>
 				{/if}
 				{#if tour.id}
+					<Button
+						variant="quiet"
+						wide
+						icon="route"
+						href="/api/tours/{tour.id}/gpx"
+						download
+					>
+						Als GPX exportieren
+					</Button>
+
 					<!-- Löschen läuft über eine Formularaktion der Startseite:
 					     eine zerstörende Handlung, ein Weg. -->
 					<form
@@ -418,6 +429,7 @@
 						<Button variant="danger" size="sm" icon="trash" type="submit">Tour löschen</Button>
 					</form>
 				{/if}
+				</div>
 			</Panel>
 		{/if}
 	</aside>
@@ -493,8 +505,12 @@
 		resize: vertical;
 	}
 
+	.aktionen {
+		display: grid;
+		gap: var(--sp-4);
+	}
+
 	.loeschen {
-		margin-top: var(--sp-4);
 		display: flex;
 		justify-content: center;
 	}

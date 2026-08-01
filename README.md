@@ -7,32 +7,26 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 
 ## Was schon läuft
 
+- **Startbildschirm**: Tourenarchiv als Liste *und* Karte, mit Umriss-Vorschau,
+  Filter nach Aktivitätsart, Sortierung und Stichwortsuche
 - **Planungsansicht** am Laptop: Karte, Wegpunkte, Route, Kennzahlen, Höhenprofil
 - **Routing** über selbst gehostetes BRouter — Wandern und Radfahren über eine Engine
 - **Höhenlinien und Schummerung** aus Höhendaten, im Browser berechnet
-- **Aktivitätsart** Wandern/Rad schaltet Routing-Profil, Zeitmodell, Farbe und Kennzahlen um
-
-## Woran gerade gearbeitet wird
-
-Der Planer rechnet richtig, sieht aber leer aus: keine Icons, fünf Knopfstile, kein
-Abstandsmaß, und eine Tour überlebt kein Neuladen. Der Vergleich mit Komoot hat das
-Zielbild geschärft — **das Handwerk übernehmen, das Beiwerk nicht** (siehe
-[Anforderungen §7](docs/01-anforderungen.md)). Daraus folgt die Reihenfolge:
-
-1. **Gestaltungsfundament** — Maße für Abstand, Radius, Ebene, Bewegung; ein lokaler
-   Iconsatz; Bausteine statt Einzelfälle; Hell/Dunkel umschaltbar, hell als Standard
-2. **Planer umbauen** — sichtbare Werkzeuge, ein Leerzustand, der die Gesten erklärt,
-   statt eines grauen Textkastens
-3. **Datenbank und Speichern** — Postgres/PostGIS, Route als Geometrie, Kennzahlen mitgeführt
-4. **Startbildschirm** — Tourenliste mit Umriss-Vorschau neben einer Übersichtskarte
-
-Die vollständige Etappenliste steht in [Anforderungen §9](docs/01-anforderungen.md).
+- **Aktivitätsart** Wandern/Rad schaltet Routing-Profil, Zeitmodell, Farbe, Symbole,
+  Betonung der Kennzahlen und Kartenlayer um
+- **Speichern** in Postgres/PostGIS, mit Datum und Notiz; unfertige Touren überleben
+  als lokaler Entwurf
+- **GPX-Export** jeder Tour
+- **Hell und Dunkel** umschaltbar, hell als Standard — die Karte geht mit
+- **Sicherung** der Nutzdaten mit einem Befehl
 
 ## Noch nicht
 
-Offline-Download · Feldansicht fürs Handy · Anmeldung und Rollen · Datenbank
-(Touren leben derzeit nur im Browser-Zustand) · Wanderwege-Overlay aus OSM ·
-POIs · Wetter · Ortssuche · GPX-Import und -Export · Archiv
+Offline-Download · Feldansicht fürs Handy · Anmeldung und Rollen ·
+Wanderwege-Overlay aus OSM (Weg B) · GPX-Import (Weg C) · POIs · Wetter ·
+Ortssuche · Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt
+
+Die Reihenfolge steht in [Anforderungen §9](docs/01-anforderungen.md).
 
 ## Einrichten
 
@@ -42,6 +36,7 @@ Voraussetzungen: Node 22+, pnpm, Docker.
 cp .env.example .env        # POSTGRES_PASSWORD setzen
 make install
 make segments               # Routing-Segmente für Deutschland (~800 MB)
+make db-migrate             # Tabellen anlegen
 make start                  # Dienste + http://localhost:5180
 ```
 
@@ -70,6 +65,9 @@ Nach dem Nachladen von Segmenten: `docker compose restart brouter`.
 | `make check` | Typen und Svelte prüfen |
 | `make services` / `services-stop` / `logs` | nur die Docker-Dienste |
 | `make segments ARGS=E5_N45` | BRouter-Segmente laden |
+| `make db-migrate` / `db-generate` | Schema anwenden, Migration erzeugen |
+| `make db-studio` | Tabellen im Browser ansehen |
+| `make db-dump` / `db-restore FILE=…` | Nutzdaten sichern und zurückspielen |
 | `make clean` / `clean-all` | Build-Artefakte, zusätzlich `node_modules` |
 
 Logs der im Hintergrund gestarteten Server liegen in `.run/`. Die zugrunde
@@ -85,7 +83,17 @@ unverändert weiter.
 | Routing | BRouter, selbst gehostet | als Fahrrad-Router entstanden, um Wanderprofile erweitert — beide Aktivitäten über *eine* Engine |
 | Höhendaten | Terrarium-Kacheln über `/api/dem` | die offenen Quellen senden kein CORS; der Umweg ist zugleich die Produktionsarchitektur |
 | Höhenlinien | `maplibre-contour` im Browser | keine vorgerenderten Kacheln nötig, funktioniert später offline |
-| Datenbank | Postgres + PostGIS | Geo-Abfragen im Archiv |
+| Datenbank | Postgres + PostGIS, Drizzle | Route als `geometry(LineStringZ)`: der Regionsfilter ist ein `ST_Intersects` auf einem GiST-Index statt einer Schleife in Node |
+| Symbole | eigener Satz, lokal gebündelt | die Feldansicht darf nichts nachladen; fünf gebrauchte Glyphen gibt es fertig nirgends |
+
+### Zwei Farbwelten, ein Tokensatz
+
+Die Oberfläche kippt mit Hell und Dunkel, die **Karte nicht** — sie ist auf die
+Basiskarte abgestimmt, und die ist in beiden Modi dieselbe helle. Deshalb gibt es
+`--route-hike` (Oberfläche, wechselt) und `--map-route-hike` (Karte, fest). Welche wo
+gilt, entscheidet die Aktivitätsdefinition über `colorVar` und `mapColorVar`. Beide
+Hälften kommen zusammen, wenn der dunkle Kartenstil mit den eigenen Protomaps-Dateien
+steht.
 
 ### Die Naht zwischen Wandern und Radfahren
 
@@ -144,21 +152,31 @@ Festgehalten, damit sie nicht zweimal auftreten:
 - **PostGIS-Image:** `postgis/postgis` ist amd64-only. `imresamu/postgis` ist derselbe
   Inhalt als Multi-Arch — nötig für Apple Silicon.
 
-### Fallen, die schon erkannt, aber noch nicht getroffen sind
-
-Beim Planen der nächsten Etappen aufgefallen — hier notiert, damit sie niemanden kalt erwischen:
-
-- **`light-dark()` und `getComputedStyle` vertragen sich nicht.** Eigene Eigenschaften geben
-  den rohen Tokenstrom zurück, also wörtlich `light-dark(#a08a6b, #4d5a4f)`. MapLibre kann
-  das nicht lesen, Höhenlinien und Schummerung fallen **still** aus — und zwar schon beim
-  ersten Laden, nicht erst beim Umschalten. Farbtokens müssen über ein Sondierelement
-  aufgelöst werden (`style.color = var(--x)`, dann `getComputedStyle().color`).
-- **`drizzle-kit` und die PostGIS-Nebenschemata.** Das Image bringt `tiger`, `tiger_data`,
-  `topology` und `spatial_ref_sys` mit. Ohne `schemaFilter: ['public']` **und**
-  `extensionsFilters: ['postgis']` schlägt `drizzle-kit push` vor, die komplette
-  PostGIS-Installation zu löschen. Das ist die einzige Stelle, die Daten zerstören kann.
+- **`light-dark()` und `getComputedStyle` vertragen sich nicht.** Eigene Eigenschaften
+  geben den rohen Tokenstrom zurück, nachgemessen also wörtlich
+  `light-dark(#a08a6b, #4d5a4f)`. MapLibre kann das nicht lesen, Höhenlinien und
+  Schummerung fallen **still** aus — schon beim ersten Laden, nicht erst beim
+  Umschalten. Dafür gibt es `resolveColorToken()` in
+  [`src/lib/ui/theme.svelte.ts`](src/lib/ui/theme.svelte.ts): Sondierelement,
+  `style.color = var(--x)`, dann `getComputedStyle().color`.
+- **`drizzle-kit` und die PostGIS-Nebenschemata.** Das Image bringt `tiger`,
+  `tiger_data`, `topology` und `spatial_ref_sys` mit. Ohne `schemaFilter: ['public']`
+  **und** `extensionsFilters: ['postgis']` schlägt `push` vor, die komplette
+  PostGIS-Installation zu löschen. Die einzige Stelle im Projekt, die Daten
+  zerstören kann — erzeugte Migrationen deshalb vor dem Anwenden lesen.
+- **Drizzles `geometry()` kann nur Punkte.** Eine `LineStringZ`-Spalte braucht
+  `customType` für die DDL und rohes SQL (`ST_AsGeoJSON` / `ST_GeomFromGeoJSON`).
+- **MapLibre verschluckt Rechtsklicks.** Sein `BlockableMapEventHandler` setzt in
+  `reset()` ein `_ignoreContextMenu`, das nur ein *linker* mousedown wieder aufhebt —
+  nach der ersten Kartenaktion kommt bei `map.on('contextmenu')` nichts mehr an,
+  still und ohne Fehler. Der Handler hängt deshalb am DOM-Ereignis des
+  Canvas-Containers.
 - **`map.setStyle()` wirft alle Laufzeit-Ebenen weg** — Relief, Höhenlinien, Route und
-  Wegpunkte müssten neu aufgebaut werden. Deshalb kommt der dunkle *Kartenstil* erst mit den
-  eigenen Protomaps-Dateien; bis dahin dunkle Oberfläche über heller Karte.
-- **Drizzles `geometry()` kann nur Punkte.** Eine `LineStringZ`-Spalte braucht `customType`
-  für die DDL und rohes SQL (`ST_AsGeoJSON` / `ST_GeomFromGeoJSON`) für Lesen und Schreiben.
+  Wegpunkte müssten neu aufgebaut werden. Deshalb kommt der dunkle *Kartenstil* erst
+  mit den eigenen Protomaps-Dateien.
+- **Der Neuberechnungs-Effekt darf nicht beim Einhängen feuern.** Sonst wird eine
+  gerade aus der Datenbank geladene Route neu geroutet — und wenn BRouter aus ist,
+  durch `null` ersetzt. Ein Schlüssel aus Aktivitätsart und Wegpunkten verhindert das.
+- **Web-Mercator braucht beide Achsen im Bogenmaß.** Grad für x und Bogenmaß für y
+  streckt x um 180/π; in der Umriss-Vorschau sah damit jede Tour aus wie ein
+  waagerechter Strich.
