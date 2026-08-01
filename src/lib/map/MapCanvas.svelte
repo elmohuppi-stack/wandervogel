@@ -46,6 +46,15 @@
 		 * setzt der Aufrufer den Ausschnitt auf die Route.
 		 */
 		startAtPosition?: boolean;
+		/**
+		 * Die Karte ist bereit und kann angefahren werden.
+		 *
+		 * Nötig wegen eines Wettlaufs: die Tourdaten liegen vor, bevor
+		 * MapLibre sein `load` gemeldet hat. Ein `fitToRoute()` direkt nach
+		 * dem Einhängen kehrt still zurück, weil es noch keine Karte gibt —
+		 * und die gespeicherte Tour läge dann außerhalb des Bildes.
+		 */
+		onReady?: () => void;
 	}
 
 	let {
@@ -57,7 +66,8 @@
 		onMoveWaypoint,
 		onRemoveWaypoint,
 		showRouteOverlay = false,
-		startAtPosition = false
+		startAtPosition = false,
+		onReady
 	}: Props = $props();
 
 	let container: HTMLDivElement;
@@ -222,6 +232,7 @@
 
 			wireInteractions(m);
 			ready = true;
+			onReady?.();
 
 			// Nie ein Berechtigungsdialog ohne Zutun: die Permissions-API
 			// fragt nicht nach, sie antwortet nur.

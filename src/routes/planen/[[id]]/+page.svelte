@@ -149,7 +149,20 @@
 		savedSignature = signature(tour);
 		routeError = null;
 		saveError = null;
+		// Beim Wechsel auf eine andere Tour den Ausschnitt mitnehmen.
+		aufTourZentrieren();
 	});
+
+	/**
+	 * Ausschnitt auf eine geladene Tour setzen.
+	 *
+	 * Nur beim Öffnen und beim Wechsel der Tour — nicht bei jeder
+	 * Routenänderung. Wer gerade einen Wegpunkt zieht, will nicht, dass die
+	 * Karte unter der Hand springt.
+	 */
+	function aufTourZentrieren() {
+		if (route) mapRef?.fitToRoute();
+	}
 
 	$effect(() => {
 		// Abhängigkeiten bewusst lesen, damit der Effekt erneut läuft.
@@ -341,6 +354,7 @@
 			markerAt={hoverAt}
 			showRouteOverlay={wegeOverlay}
 			startAtPosition={!data.tour}
+			onReady={aufTourZentrieren}
 			onAddWaypoint={addWaypoint}
 			onMoveWaypoint={moveWaypoint}
 			onRemoveWaypoint={removeWaypoint}
