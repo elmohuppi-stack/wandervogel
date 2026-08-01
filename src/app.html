@@ -1,9 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Die Feldansicht wird am Lenker und im Gehen bedient: kein
+		     versehentliches Zoomen durch Doppeltipp. -->
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="text-scale" content="scale" />
+		<meta name="theme-color" content="#e9ece6" />
+		<script>
+			// Läuft vor dem ersten Anstrich, damit die App nicht hell aufblitzt,
+			// bevor der Dunkelmodus greift. Standard ist hell — die warme
+			// Kartenwelt ist der Normalfall, nicht die Systemeinstellung.
+			try {
+				var t = localStorage.getItem('wv.theme');
+				document.documentElement.dataset.theme =
+					t === 'dark' || t === 'system' ? t : 'light';
+			} catch (e) {
+				// Privater Modus oder gesperrter Speicher: hell ist die Vorgabe.
+				document.documentElement.dataset.theme = 'light';
+			}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

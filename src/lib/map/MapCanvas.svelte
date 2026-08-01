@@ -24,6 +24,7 @@
 	import type { Feature, FeatureCollection, Point } from 'geojson';
 	import { CONTOUR_THRESHOLDS, config } from '$lib/config';
 	import { activity, type ActivityType } from '$lib/geo/activity';
+	import { prefersReducedMotion, resolveColorToken } from '$lib/ui/theme.svelte';
 	import type { RouteResult, Waypoint } from '$lib/tour/types';
 
 	interface Props {
@@ -57,16 +58,8 @@
 	const LYR_ROUTE = 'wv-route-line';
 	const LYR_WP = 'wv-waypoints-circle';
 
-	/** Farbwerte kommen aus den Design-Tokens, damit Karte und Oberfläche
-	 *  nie auseinanderlaufen und der Dunkelmodus mitgenommen wird. */
-	function token(name: string, fallback = '#000'): string {
-		if (typeof window === 'undefined') return fallback;
-		const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-		return v || fallback;
-	}
-
 	function routeColor(): string {
-		return token(activity(activityType).colorVar, '#b3382a');
+		return resolveColorToken(activity(activityType).colorVar, '#b3382a');
 	}
 
 	/* ------------------------------------------------------------------
@@ -198,9 +191,9 @@
 						// Höhendaten harte dunkle Flecken entstehen, unter denen
 						// Wege und Beschriftungen verschwinden.
 						'hillshade-exaggeration': 0.16,
-						'hillshade-shadow-color': '#6b6152',
-						'hillshade-highlight-color': '#fffdf8',
-						'hillshade-accent-color': '#8c8272'
+						'hillshade-shadow-color': resolveColorToken('--hs-shadow', '#6b6152'),
+						'hillshade-highlight-color': resolveColorToken('--hs-highlight', '#fffdf8'),
+						'hillshade-accent-color': resolveColorToken('--hs-accent', '#8c8272')
 					}
 				},
 				firstSymbol
@@ -228,7 +221,7 @@
 					source: 'wv-contours',
 					'source-layer': 'contours',
 					paint: {
-						'line-color': token('--contour', '#a08a6b'),
+						'line-color': resolveColorToken('--contour', '#a08a6b'),
 						// Jede fünfte Linie betont — so lesen sich Wanderkarten.
 						'line-width': ['match', ['get', 'level'], 1, 1.1, 0.6],
 						'line-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0, 11.5, 0.55]
@@ -252,8 +245,8 @@
 						...(textFont ? { 'text-font': textFont } : {})
 					},
 					paint: {
-						'text-color': token('--contour-index', '#8a7250'),
-						'text-halo-color': token('--paper-2', '#f4f6f1'),
+						'text-color': resolveColorToken('--contour-index', '#8a7250'),
+						'text-halo-color': resolveColorToken('--paper-2', '#f4f6f1'),
 						'text-halo-width': 1.4
 					}
 				},
@@ -266,13 +259,18 @@
 			m.addSource(SRC_WP, { type: 'geojson', data: waypointFeatures() });
 			m.addSource(SRC_MARKER, { type: 'geojson', data: markerFeature() });
 
-			// Weiße Fassung darunter — hält die Route auf jedem Untergrund lesbar.
+			// Fassung darunter — hält die Route auf jedem Untergrund lesbar.
+			// Hell ist sie weiß, dunkel fast schwarz; deshalb ein Token.
 			m.addLayer({
 				id: 'wv-route-casing',
 				type: 'line',
 				source: SRC_ROUTE,
 				layout: { 'line-cap': 'round', 'line-join': 'round' },
-				paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': 0.75 }
+				paint: {
+					'line-color': resolveColorToken('--route-casing', '#ffffff'),
+					'line-width': 8,
+					'line-opacity': 0.75
+				}
 			});
 
 			m.addLayer({
@@ -289,8 +287,8 @@
 				source: SRC_MARKER,
 				paint: {
 					'circle-radius': 6,
-					'circle-color': token('--ink', '#171b17'),
-					'circle-stroke-color': token('--surface', '#ffffff'),
+					'circle-color': resolveColorToken('--ink', '#171b17'),
+					'circle-stroke-color': resolveColorToken('--surface', '#ffffff'),
 					'circle-stroke-width': 2.5
 				}
 			});
@@ -302,7 +300,7 @@
 				paint: {
 					'circle-radius': 9,
 					'circle-color': routeColor(),
-					'circle-stroke-color': '#ffffff',
+					'circle-stroke-color': resolveColorToken('--route-casing', '#ffffff'),
 					'circle-stroke-width': 2
 				}
 			});
@@ -318,7 +316,7 @@
 					'text-ignore-placement': true,
 					...(textFont ? { 'text-font': textFont } : {})
 				},
-				paint: { 'text-color': '#ffffff' }
+				paint: { 'text-color': resolveColorToken('--on-route', '#ffffff') }
 			});
 
 			wireInteractions(m);
@@ -443,7 +441,9 @@
 				[minX, minY],
 				[maxX, maxY]
 			],
-			{ padding, duration: 400 }
+			// Die globale Regel in app.css erreicht MapLibre nicht — das ist
+			// JavaScript, kein CSS-Übergang.
+			{ padding, duration: prefersReducedMotion() ? 0 : 400 }
 		);
 	}
 </script>
@@ -462,7 +462,7 @@
 	.map :global(.maplibregl-ctrl-group) {
 		background: color-mix(in srgb, var(--surface) 92%, transparent);
 		border: 1px solid var(--edge);
-		border-radius: var(--r);
+		border-radius: var(--r-sm);
 		box-shadow: none;
 	}
 	.map :global(.maplibregl-ctrl-group button + button) {

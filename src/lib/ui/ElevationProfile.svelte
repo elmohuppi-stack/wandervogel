@@ -226,7 +226,7 @@
 		font-weight: 550;
 		padding: 0.15rem 0.35rem;
 		border: 1px solid transparent;
-		border-radius: 2px;
+		border-radius: var(--r-xs);
 		background: transparent;
 		color: var(--ink-3);
 		cursor: pointer;

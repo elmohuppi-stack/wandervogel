@@ -339,7 +339,7 @@
 		color: inherit;
 		background: transparent;
 		border: 1px solid transparent;
-		border-radius: 2px;
+		border-radius: var(--r-xs);
 		padding: 0.18rem 0.4rem;
 		min-width: 8ch;
 		max-width: 34ch;
@@ -377,7 +377,7 @@
 		gap: 2px;
 		padding: 2px;
 		border: 1px solid var(--edge);
-		border-radius: var(--r);
+		border-radius: var(--r-sm);
 		background: var(--surface-2);
 		flex: none;
 	}
@@ -389,7 +389,7 @@
 		font-weight: 550;
 		padding: 0.25rem 0.6rem;
 		border: 0;
-		border-radius: 2px;
+		border-radius: var(--r-xs);
 		background: transparent;
 		color: var(--ink-3);
 		cursor: pointer;
@@ -419,9 +419,9 @@
 		transform: translateX(-50%);
 		max-width: min(46ch, calc(100% - 2rem));
 		padding: 0.5rem 0.8rem;
-		border-radius: var(--r);
+		border-radius: var(--r-sm);
 		font-size: var(--fs-sm);
-		box-shadow: var(--shadow);
+		box-shadow: var(--el-2);
 		z-index: 2;
 	}
 	.onboarding {
@@ -526,7 +526,7 @@
 		font-family: var(--mono);
 		background: var(--surface-2);
 		padding: 0.05rem 0.3rem;
-		border-radius: 2px;
+		border-radius: var(--r-xs);
 	}
 
 	/* Wegpunkte */
@@ -543,7 +543,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.34rem 0.3rem;
-		border-radius: 2px;
+		border-radius: var(--r-xs);
 		border: 1px solid transparent;
 		font-size: var(--fs-sm);
 		cursor: grab;
@@ -605,7 +605,7 @@
 		width: 100%;
 		padding: 0.4rem;
 		border: 1px solid var(--edge);
-		border-radius: var(--r);
+		border-radius: var(--r-sm);
 		background: var(--surface-2);
 		font-size: var(--fs-sm);
 		font-weight: 500;
