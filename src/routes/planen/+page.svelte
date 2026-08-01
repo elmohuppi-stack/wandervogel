@@ -193,7 +193,7 @@
 			<div class="onboarding">
 				<b>In die Karte klicken</b>
 				setzt den ersten Wegpunkt. Ab dem zweiten wird die Route entlang echter
-				{def.id === 'hike' ? 'Wanderwege' : 'Radwege'} berechnet.
+				{def.routeLayerLabel} berechnet.
 			</div>
 		{/if}
 
