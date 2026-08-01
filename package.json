@@ -13,7 +13,11 @@
 		"services": "docker compose up -d",
 		"services:stop": "docker compose down",
 		"services:logs": "docker compose logs -f",
-		"segments": "./scripts/fetch-brouter-segments.sh"
+		"segments": "./scripts/fetch-brouter-segments.sh",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.5.7",

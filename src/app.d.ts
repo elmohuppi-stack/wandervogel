@@ -2,8 +2,12 @@
 // for information about these interfaces
 declare global {
 	namespace App {
+		interface Locals {
+			/** Wem die Daten dieser Anfrage gehören. Gesetzt in hooks.server.ts;
+			 *  kommt mit der Anmeldung aus der Sitzung. */
+			ownerId: string;
+		}
 		// interface Error {}
-		// interface Locals {}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

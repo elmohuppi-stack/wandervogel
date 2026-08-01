@@ -20,7 +20,8 @@ APP_LOG  := $(RUN_DIR)/app.log
 
 .DEFAULT_GOAL := help
 .PHONY: help install env services services-stop logs start dev stop restart \
-        build preview preview-stop check segments status clean clean-all
+        build preview preview-stop check segments status clean clean-all \
+        db-generate db-migrate db-push db-studio db-dump db-restore
 
 ## ----------------------------------------------------------------- Übersicht
 
@@ -42,6 +43,12 @@ help:
 	@echo '  make services-stop  nur Docker-Dienste anhalten'
 	@echo '  make logs           Docker-Logs folgen'
 	@echo '  make segments       BRouter-Segmente laden, z. B. ARGS=E5_N45'
+	@echo ''
+	@echo '  make db-migrate     Datenbankschema anwenden'
+	@echo '  make db-generate    Migration aus dem Schema erzeugen'
+	@echo '  make db-studio      Tabellen im Browser ansehen'
+	@echo '  make db-dump        Nutzdaten sichern nach data/backup/'
+	@echo '  make db-restore     Sicherung zurückspielen, FILE=…'
 	@echo ''
 	@echo '  make clean          Build-Artefakte entfernen'
 	@echo '  make clean-all      zusätzlich node_modules (Laufzeitdaten bleiben)'
@@ -178,6 +185,42 @@ check: node_modules
 segments:
 	pnpm segments $(ARGS)
 	@echo 'Nach neuen Segmenten: docker compose restart brouter'
+
+## ---------------------------------------------------------------- Datenbank
+
+# drizzle-kit liest DATABASE_URL aus der Umgebung, nicht aus .env — deshalb
+# dieselbe Quelle wie bei `make preview`.
+DB_ENV := set -a; . ./.env; set +a;
+
+db-generate: env node_modules
+	@$(DB_ENV) pnpm exec drizzle-kit generate
+
+db-migrate: env node_modules services
+	@$(DB_ENV) pnpm exec drizzle-kit migrate
+	@echo 'Migrationen angewendet.'
+
+# Nur zum Experimentieren. Schreibt das Schema ohne Migrationsdatei und
+# kann deshalb kein CREATE EXTENSION mittragen.
+db-push: env node_modules services
+	@$(DB_ENV) pnpm exec drizzle-kit push
+
+db-studio: env node_modules services
+	@$(DB_ENV) pnpm exec drizzle-kit studio
+
+# Erfüllt die Anforderung „Backup der Nutzdaten mit einem Befehl".
+db-dump: env services
+	@mkdir -p data/backup
+	@f=data/backup/wandervogel-$$(date +%F-%H%M).dump; \
+	docker exec wv-db pg_dump -Fc -U $${POSTGRES_USER:-wandervogel} \
+		-d $${POSTGRES_DB:-wandervogel} > $$f && \
+	echo "Gesichert: $$f ($$(du -h $$f | cut -f1))"
+
+# Zurückspielen: make db-restore FILE=data/backup/…
+db-restore: env services
+	@[ -n "$(FILE)" ] || { echo 'FILE fehlt: make db-restore FILE=data/backup/…'; exit 1; }
+	@docker exec -i wv-db pg_restore -U $${POSTGRES_USER:-wandervogel} \
+		-d $${POSTGRES_DB:-wandervogel} --clean --if-exists < $(FILE)
+	@echo 'Zurückgespielt.'
 
 ## ---------------------------------------------------------------- Aufräumen
 
