@@ -26,3 +26,6 @@ vite.config.ts.timestamp-*
 # heruntergeladene Kartenausschnitte. Nichts davon gehört ins Repository.
 /data
 
+# PID- und Logdateien der über `make start` gestarteten Server
+/.run
+
