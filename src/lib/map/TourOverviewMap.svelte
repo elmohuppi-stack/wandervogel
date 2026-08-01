@@ -13,13 +13,14 @@
 	import { Map as MlMap, type GeoJSONSource } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import type { FeatureCollection } from 'geojson';
-	import { activity } from '$lib/geo/activity';
+	import { DEFAULT_ACTIVITY, activity, type ActivityType } from '$lib/geo/activity';
 	import type { TourListItem } from '$lib/tour/types';
 	import { prefersReducedMotion, resolveColorToken, theme } from '$lib/ui/theme.svelte';
-	import { addTerrainLayers, createMap } from './basemap';
+	import { addRouteOverlay, addTerrainLayers, createMap, setRouteOverlay } from './basemap';
 	import {
 		addPositionLayers,
 		locateOnce,
+		locationAllowed,
 		positionFeatures,
 		SRC_POSITION,
 		type Position
@@ -39,9 +40,24 @@
 		 * schon beim Laden.
 		 */
 		onUserMoved?: (bbox: [number, number, number, number]) => void;
+		/** Markierte Routen einblenden. */
+		showRouteOverlay?: boolean;
+		/**
+		 * Welche Routen das Overlay zeigt. Auf der Startseite gibt es keine
+		 * „aktuelle" Aktivitätsart — hier entscheidet der Filter, und ohne
+		 * Filter die Vorgabe aus der Naht.
+		 */
+		overlayActivity?: ActivityType;
 	}
 
-	let { tours, hoveredId = $bindable(null), onSelect, onUserMoved }: Props = $props();
+	let {
+		tours,
+		hoveredId = $bindable(null),
+		onSelect,
+		onUserMoved,
+		showRouteOverlay = false,
+		overlayActivity = DEFAULT_ACTIVITY
+	}: Props = $props();
 
 	let container: HTMLDivElement;
 	let map: MlMap | undefined;
@@ -91,7 +107,8 @@
 		map = m;
 
 		m.on('load', () => {
-			addTerrainLayers(m);
+			const { firstSymbolId } = addTerrainLayers(m);
+			addRouteOverlay(m, activity(overlayActivity).overlayLayer, firstSymbolId);
 
 			m.addSource(SRC, { type: 'geojson', data: collection() });
 
@@ -157,7 +174,7 @@
 			});
 
 			ready = true;
-			fitToTours();
+			void startausschnitt();
 		});
 
 		return () => {
@@ -185,6 +202,29 @@
 			positionFeatures(position)
 		);
 	});
+
+	$effect(() => {
+		if (!ready || !map) return;
+		setRouteOverlay(map, showRouteOverlay, activity(overlayActivity).overlayLayer);
+	});
+
+	/**
+	 * Wo die Karte aufgeht.
+	 *
+	 * Der eigene Standort, wenn die Ortung schon erlaubt ist — das ist die
+	 * Frage, die man beim Öffnen am häufigsten hat. Sonst der Umriss über
+	 * alle Touren, und ohne Touren der Startausschnitt aus der Konfiguration.
+	 *
+	 * Nie ein Berechtigungsdialog ohne Zutun: gefragt wird die
+	 * Permissions-API, und die fragt nicht nach.
+	 */
+	async function startausschnitt() {
+		if (await locationAllowed()) {
+			await locate();
+			return;
+		}
+		fitToTours();
+	}
 
 	/* ------------------------------------------------------------------
 	   Von außen aufrufbar

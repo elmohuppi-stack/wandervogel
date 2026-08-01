@@ -22,6 +22,7 @@
 	import {
 		addPositionLayers,
 		locateOnce,
+		locationAllowed,
 		positionFeatures,
 		SRC_POSITION,
 		type Position
@@ -39,6 +40,12 @@
 		onRemoveWaypoint?: (id: string) => void;
 		/** Markierte Routen der Aktivitätsart einblenden. */
 		showRouteOverlay?: boolean;
+		/**
+		 * Beim Öffnen auf den eigenen Standort stellen, sofern die Ortung
+		 * schon erlaubt ist. Bei einer *gespeicherten* Tour nicht — dort
+		 * setzt der Aufrufer den Ausschnitt auf die Route.
+		 */
+		startAtPosition?: boolean;
 	}
 
 	let {
@@ -49,7 +56,8 @@
 		onAddWaypoint,
 		onMoveWaypoint,
 		onRemoveWaypoint,
-		showRouteOverlay = false
+		showRouteOverlay = false,
+		startAtPosition = false
 	}: Props = $props();
 
 	let container: HTMLDivElement;
@@ -214,6 +222,14 @@
 
 			wireInteractions(m);
 			ready = true;
+
+			// Nie ein Berechtigungsdialog ohne Zutun: die Permissions-API
+			// fragt nicht nach, sie antwortet nur.
+			if (startAtPosition) {
+				void locationAllowed().then((ok) => {
+					if (ok) void locate();
+				});
+			}
 		});
 
 		return () => {

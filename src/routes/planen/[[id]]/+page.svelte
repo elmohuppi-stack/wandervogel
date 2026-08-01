@@ -340,6 +340,7 @@
 			{route}
 			markerAt={hoverAt}
 			showRouteOverlay={wegeOverlay}
+			startAtPosition={!data.tour}
 			onAddWaypoint={addWaypoint}
 			onMoveWaypoint={moveWaypoint}
 			onRemoveWaypoint={removeWaypoint}

@@ -11,9 +11,10 @@
 	 * Blick. Das ist das Detail, das aus zwei Flächen eine macht.
 	 */
 	import { untrack } from 'svelte';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import type { ActivityType } from '$lib/geo/activity';
+	import { DEFAULT_ACTIVITY, activity, type ActivityType } from '$lib/geo/activity';
 	import TourOverviewMap from '$lib/map/TourOverviewMap.svelte';
 	import ActivityChips from '$lib/ui/ActivityChips.svelte';
 	import Alert from '$lib/ui/Alert.svelte';
@@ -40,6 +41,15 @@
 	/** Ausschnitt, den der Nutzer gerade eingestellt hat — noch nicht als
 	 *  Filter übernommen. */
 	let gebiet = $state<[number, number, number, number] | null>(null);
+	let wegeOverlay = $state(browser && localStorage.getItem('wv.wegeOverlay') === '1');
+
+	function wegeUmschalten() {
+		wegeOverlay = !wegeOverlay;
+		localStorage.setItem('wv.wegeOverlay', wegeOverlay ? '1' : '0');
+	}
+
+	/** Ohne Filter zeigt das Overlay die Vorgabe aus der Naht. */
+	const overlayArt = $derived(data.filter.activityType ?? DEFAULT_ACTIVITY);
 
 	function gebietSuchen() {
 		if (!gebiet) return;
@@ -189,6 +199,8 @@
 			bind:hoveredId
 			onSelect={(id: string) => goto(`/planen/${id}`)}
 			onUserMoved={(b) => (gebiet = b)}
+			showRouteOverlay={wegeOverlay}
+			overlayActivity={overlayArt}
 		/>
 
 		<!-- Erscheint erst, wenn der Nutzer den Ausschnitt selbst verschoben
@@ -211,6 +223,14 @@
 
 		<MapTools>
 			<IconButton
+				icon="layers"
+				label="{activity(overlayArt).routeLayerLabel} {wegeOverlay
+					? 'ausblenden'
+					: 'einblenden'}"
+				pressed={wegeOverlay}
+				onclick={wegeUmschalten}
+			/>
+			<IconButton
 				icon="location-fix"
 				label="Auf meinen Standort"
 				onclick={async () => {
@@ -225,6 +245,13 @@
 				disabled={data.tours.length === 0}
 			/>
 		</MapTools>
+
+		{#if wegeOverlay}
+			<div class="legende">
+				<Icon name="layers" size={12} />
+				{activity(overlayArt).routeLayerLabel} — markierte Routen aus OpenStreetMap
+			</div>
+		{/if}
 
 		{#if ortungsfehler}
 			<div class="karten-fehler">
@@ -354,6 +381,23 @@
 		z-index: var(--z-map-ui);
 		box-shadow: var(--el-2);
 		border-radius: var(--r-sm);
+	}
+
+	.legende {
+		position: absolute;
+		bottom: var(--sp-5);
+		left: var(--sp-5);
+		z-index: var(--z-map-ui);
+		display: flex;
+		align-items: center;
+		gap: var(--sp-3);
+		padding: var(--sp-3) var(--sp-4);
+		background: color-mix(in srgb, var(--surface) 92%, transparent);
+		border: 1px solid var(--edge);
+		border-radius: var(--r-sm);
+		box-shadow: var(--el-1);
+		font-size: var(--fs-xs);
+		color: var(--ink-2);
 	}
 
 	.karten-fehler {

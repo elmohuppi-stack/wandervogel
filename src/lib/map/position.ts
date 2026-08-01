@@ -103,6 +103,26 @@ export function addPositionLayers(m: MlMap, pos: Position | null = null): void {
 }
 
 /**
+ * Ist die Ortung schon erlaubt?
+ *
+ * Über die Permissions-API gefragt, weil sie **nicht** nachfragt. Damit
+ * lässt sich die Karte beim Öffnen auf den eigenen Standort stellen, ohne
+ * jemandem bei jedem Besuch einen Berechtigungsdialog vorzusetzen. Wer nie
+ * zugestimmt hat, wird auch nicht gefragt — erst wenn er den Knopf drückt.
+ */
+export async function locationAllowed(): Promise<boolean> {
+	if (typeof navigator === 'undefined' || !navigator.permissions) return false;
+	try {
+		const p = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+		return p.state === 'granted';
+	} catch {
+		// Safari kannte die Abfrage für Geolocation lange nicht. Dann eben
+		// nicht von selbst orten.
+		return false;
+	}
+}
+
+/**
  * Standort einmalig bestimmen.
  *
  * Einmalig, nicht als Dauerbeobachtung: beim Planen am Laptop will man
