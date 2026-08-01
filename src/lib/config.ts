@@ -24,6 +24,25 @@ export const config = {
 	demEncoding: 'terrarium' as const,
 	demMaxZoom: 13,
 
+	/**
+	 * Markierte Wander- und Radrouten als Rasterkacheln.
+	 *
+	 * `{layer}` wird aus der Aktivitätsart eingesetzt. In der Entwicklung
+	 * waymarkedtrails — die Anforderungen lassen es in Abschnitt 10
+	 * ausdrücklich zu, aber nur als *optionales* Overlay für die Planung.
+	 * Langfristig ein eigenes Vektor-Overlay aus einem OSM-Extrakt; dann
+	 * zeigt diese Adresse auf den eigenen Server.
+	 *
+	 * Abschnitt 7 warnt beim Namen: „Kartenlayer sparsam — nicht alle
+	 * Routen gleichzeitig bunt übereinander". Deshalb standardmäßig aus
+	 * und immer nur die Routen *einer* Aktivitätsart.
+	 */
+	routeOverlayUrl:
+		env.PUBLIC_ROUTE_OVERLAY_URL ?? 'https://tile.waymarkedtrails.org/{layer}/{z}/{x}/{y}.png',
+	routeOverlayAttribution:
+		'Wegmarkierungen: <a href="https://waymarkedtrails.org">Waymarked Trails</a> (CC-BY-SA)',
+	routeOverlayMaxZoom: 18,
+
 	/** Startausschnitt: Pfälzerwald. */
 	initialView: {
 		center: [7.95, 49.2] as [number, number],

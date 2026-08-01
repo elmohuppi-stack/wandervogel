@@ -87,6 +87,14 @@ export interface ActivityDefinition {
 	brouterProfile: string;
 	/** OSM-Relationstyp für das Routen-Overlay. */
 	osmRouteType: 'hiking' | 'bicycle';
+	/**
+	 * Name der Kachelebene im Routen-Overlay.
+	 *
+	 * Steht getrennt von `osmRouteType`, weil OSM die Relation `bicycle`
+	 * nennt und die Kachelquelle `cycling`. Eine Umrechnung im Aufrufer
+	 * wäre wieder eine Verzweigung nach Aktivitätsart.
+	 */
+	overlayLayer: string;
 	/** Beschriftung des Layer-Chips über der Karte. */
 	routeLayerLabel: string;
 	/** POI-Gruppen in Anzeigereihenfolge. */
@@ -131,6 +139,7 @@ export const ACTIVITIES: Record<ActivityType, ActivityDefinition> = {
 		mapColorVar: '--map-route-hike',
 		brouterProfile: 'hiking-mountain',
 		osmRouteType: 'hiking',
+		overlayLayer: 'hiking',
 		routeLayerLabel: 'Wanderwege',
 		poiCategories: ['hut', 'water', 'food', 'shelter', 'viewpoint', 'bus'],
 		durationS: (s) => hikeDurationS(s, HIKE_DEFAULTS),
@@ -170,6 +179,7 @@ export const ACTIVITIES: Record<ActivityType, ActivityDefinition> = {
 		mapColorVar: '--map-route-bike',
 		brouterProfile: 'trekking',
 		osmRouteType: 'bicycle',
+		overlayLayer: 'cycling',
 		routeLayerLabel: 'Radwege',
 		poiCategories: ['water', 'food', 'bike_shop', 'bike_repair', 'train', 'viewpoint'],
 		durationS: (s) => bikeDurationS(s, BIKE_DEFAULTS),

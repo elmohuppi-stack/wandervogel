@@ -18,13 +18,16 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
   als lokaler Entwurf
 - **GPX-Export** jeder Tour
 - **Hell und Dunkel** umschaltbar, hell als Standard — die Karte geht mit
+- **Ortssuche** und **eigener Standort** auf beiden Karten
+- **Markiertes Wegenetz** ein- und ausblendbar, passend zur Aktivitätsart
 - **Sicherung** der Nutzdaten mit einem Befehl
 
 ## Noch nicht
 
 Offline-Download · Feldansicht fürs Handy · Anmeldung und Rollen ·
-Wanderwege-Overlay aus OSM (Weg B) · GPX-Import (Weg C) · POIs · Wetter ·
-Ortssuche · Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt
+**eigenes** Wegenetz-Overlay aus einem OSM-Extrakt · eine OSM-Route als
+Tour übernehmen (Weg B) · GPX-Import (Weg C) · POIs · Wetter ·
+Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt
 
 Die Reihenfolge steht in [Anforderungen §9](docs/01-anforderungen.md).
 
@@ -130,6 +133,13 @@ Fremd-Fair-Use-Dienste im Dauerbetrieb.
 | Basiskarte | OpenFreeMap | selbst gehostete Protomaps-PMTiles |
 | Höhendaten | offene AWS-Terrain-Kacheln | lokale PMTiles-Dateien |
 | Routing | BRouter lokal | BRouter lokal |
+| Ortssuche | öffentliches Nominatim über `/api/suche` | eigene Nominatim-Instanz |
+| Wegenetz | waymarkedtrails-Raster | eigenes Vektor-Overlay aus OSM-Extrakt |
+
+Das Wegenetz ist die einzige zugelassene Fremdquelle für die Planung — die
+Anforderungen erlauben sie in Abschnitt 10 ausdrücklich, aber nur als
+*optionales* Overlay. Es ist deshalb standardmäßig aus und zeigt immer nur
+die Routen **einer** Aktivitätsart.
 
 Umgestellt wird über `.env`; die Karte liest ihre Quellen aus
 [`src/lib/config.ts`](src/lib/config.ts).

@@ -18,7 +18,7 @@
 	import { activity, type ActivityType } from '$lib/geo/activity';
 	import { prefersReducedMotion, resolveColorToken, theme } from '$lib/ui/theme.svelte';
 	import type { RouteResult, Waypoint } from '$lib/tour/types';
-	import { addTerrainLayers, createMap } from './basemap';
+	import { addRouteOverlay, addTerrainLayers, createMap, setRouteOverlay } from './basemap';
 	import {
 		addPositionLayers,
 		locateOnce,
@@ -37,6 +37,8 @@
 		onAddWaypoint?: (lon: number, lat: number) => void;
 		onMoveWaypoint?: (id: string, lon: number, lat: number) => void;
 		onRemoveWaypoint?: (id: string) => void;
+		/** Markierte Routen der Aktivitätsart einblenden. */
+		showRouteOverlay?: boolean;
 	}
 
 	let {
@@ -46,7 +48,8 @@
 		markerAt = null,
 		onAddWaypoint,
 		onMoveWaypoint,
-		onRemoveWaypoint
+		onRemoveWaypoint,
+		showRouteOverlay = false
 	}: Props = $props();
 
 	let container: HTMLDivElement;
@@ -135,7 +138,10 @@
 			// Relief und Höhenlinien kommen aus der geteilten Grundlage; sie
 			// liefert zugleich den Schriftstapel und die Einhängestelle.
 			const { firstSymbolId, textFont } = addTerrainLayers(m);
-			void firstSymbolId;
+
+			// Über die Höhenlinien, unter die Ortsnamen — und unter die
+			// eigene Route, die weiter unten dazukommt.
+			addRouteOverlay(m, activity(activityType).overlayLayer, firstSymbolId);
 
 			/* --- eigene Ebenen: Route, Wegpunkte, Profilmarker --- */
 
@@ -342,6 +348,13 @@
 		if (!ready) return;
 		void position;
 		setData(SRC_POS, positionFeatures(position));
+	});
+
+	// Sichtbarkeit und Ebene folgen der Aktivitätsart: wer aufs Rad
+	// umschaltet, will Radrouten sehen, nicht Wanderwege.
+	$effect(() => {
+		if (!ready || !map) return;
+		setRouteOverlay(map, showRouteOverlay, activity(activityType).overlayLayer);
 	});
 
 	/* ------------------------------------------------------------------

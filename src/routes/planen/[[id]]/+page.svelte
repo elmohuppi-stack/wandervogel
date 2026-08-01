@@ -14,6 +14,7 @@
 	 * und Wegpunktliste liegen daneben.
 	 */
 	import { untrack } from 'svelte';
+	import { browser } from '$app/environment';
 	import { beforeNavigate, replaceState } from '$app/navigation';
 	import { DEFAULT_ACTIVITY, activity } from '$lib/geo/activity';
 	import MapCanvas from '$lib/map/MapCanvas.svelte';
@@ -44,12 +45,27 @@
 	let routing = $state(false);
 	let routeError = $state<string | null>(null);
 	let hoverAt = $state<number | null>(null);
-	let profileCollapsed = $state(false);
+	let profileCollapsed = $state(browser && localStorage.getItem('wv.profileCollapsed') === '1');
 	let mapRef = $state<ReturnType<typeof MapCanvas> | undefined>();
 
 	let saving = $state(false);
 	let saveError = $state<string | null>(null);
 	let ortungsfehler = $state<string | null>(null);
+	/**
+	 * Markierte Routen einblenden. Aus als Vorgabe (Anforderungen 7:
+	 * „Kartenlayer sparsam"), die Wahl überlebt aber den Neustart.
+	 *
+	 * Gelesen beim Einhängen, geschrieben im Umschalter — nicht über zwei
+	 * Effekte, von denen einer liest und einer schreibt. Deren Korrektheit
+	 * hängt an der Deklarationsreihenfolge, und genau davor warnt der
+	 * Kommentar in theme.svelte.ts.
+	 */
+	let wegeOverlay = $state(browser && localStorage.getItem('wv.wegeOverlay') === '1');
+
+	function wegeUmschalten() {
+		wegeOverlay = !wegeOverlay;
+		localStorage.setItem('wv.wegeOverlay', wegeOverlay ? '1' : '0');
+	}
 	/** Fingerabdruck des zuletzt gespeicherten Standes. */
 	let savedSignature = $state(untrack(() => signature(data.tour ?? emptyTour(DEFAULT_ACTIVITY))));
 
@@ -283,16 +299,18 @@
 		}
 	});
 
-	/* --- Einklappzustand des Profils merken ------------------------------ */
+	/* --- Einklappzustand des Profils merken ------------------------------
+	   Geschrieben, wenn er sich ändert; gelesen beim Einhängen. Vorher
+	   waren es zwei Effekte, deren Zusammenspiel an ihrer Reihenfolge hing. */
 
+	let letzterProfilstand = untrack(() => profileCollapsed);
 	$effect(() => {
-		const stored = localStorage.getItem('wv.profileCollapsed');
-		if (stored !== null) profileCollapsed = stored === '1';
-	});
-
-	$effect(() => {
+		if (profileCollapsed === letzterProfilstand) return;
+		letzterProfilstand = profileCollapsed;
 		localStorage.setItem('wv.profileCollapsed', profileCollapsed ? '1' : '0');
 	});
+
+
 </script>
 
 <svelte:head>
@@ -321,6 +339,7 @@
 			waypoints={tour.waypoints}
 			{route}
 			markerAt={hoverAt}
+			showRouteOverlay={wegeOverlay}
 			onAddWaypoint={addWaypoint}
 			onMoveWaypoint={moveWaypoint}
 			onRemoveWaypoint={removeWaypoint}
@@ -334,6 +353,12 @@
 
 		<MapTools>
 			<IconButton
+				icon="layers"
+				label="{def.routeLayerLabel} {wegeOverlay ? 'ausblenden' : 'einblenden'}"
+				pressed={wegeOverlay}
+				onclick={wegeUmschalten}
+			/>
+			<IconButton
 				icon="location-fix"
 				label="Auf meinen Standort"
 				onclick={async () => {
@@ -342,6 +367,15 @@
 				}}
 			/>
 		</MapTools>
+
+		{#if wegeOverlay}
+			<!-- Sagen, was man sieht. Ein farbiges Netz ohne Erklärung ist
+			     genau das Beiwerk, das die Anforderungen ablehnen. -->
+			<div class="legende">
+				<Icon name="layers" size={12} />
+				{def.routeLayerLabel} — markierte Routen aus OpenStreetMap
+			</div>
+		{/if}
 
 		{#if tour.waypoints.length === 0}
 			<StartCard {def} />
@@ -503,6 +537,23 @@
 		left: var(--sp-5);
 		z-index: var(--z-map-ui);
 		width: min(22rem, calc(100% - 2 * var(--sp-5) - var(--hit-sm) - var(--sp-4)));
+	}
+
+	.legende {
+		position: absolute;
+		bottom: var(--sp-5);
+		left: var(--sp-5);
+		z-index: var(--z-map-ui);
+		display: flex;
+		align-items: center;
+		gap: var(--sp-3);
+		padding: var(--sp-3) var(--sp-4);
+		background: color-mix(in srgb, var(--surface) 92%, transparent);
+		border: 1px solid var(--edge);
+		border-radius: var(--r-sm);
+		box-shadow: var(--el-1);
+		font-size: var(--fs-xs);
+		color: var(--ink-2);
 	}
 
 	.fehler {

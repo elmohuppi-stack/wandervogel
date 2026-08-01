@@ -11,7 +11,13 @@
  * gerade nicht auf Klicks Wegpunkte setzen.
  */
 
-import { Map as MlMap, NavigationControl, ScaleControl, addProtocol } from 'maplibre-gl';
+import {
+	Map as MlMap,
+	NavigationControl,
+	ScaleControl,
+	addProtocol,
+	type RasterTileSource
+} from 'maplibre-gl';
 import mlcontour from 'maplibre-contour';
 import { CONTOUR_THRESHOLDS, config } from '$lib/config';
 import { resolveColorToken } from '$lib/ui/theme.svelte';
@@ -170,4 +176,60 @@ export function addTerrainLayers(m: MlMap): TerrainInfo {
 	);
 
 	return { firstSymbolId, textFont };
+}
+
+/* ---------------------------------------------------------------------------
+   Markierte Wander- und Radrouten
+   --------------------------------------------------------------------------- */
+
+export const SRC_ROUTE_OVERLAY = 'wv-route-overlay';
+export const LYR_ROUTE_OVERLAY = 'wv-route-overlay-raster';
+
+function overlayTiles(layer: string): string {
+	return config.routeOverlayUrl.replace('{layer}', layer);
+}
+
+/**
+ * Das Netz der markierten Routen als Rasterebene.
+ *
+ * Standardmäßig unsichtbar. Abschnitt 7 der Anforderungen warnt namentlich
+ * vor diesem Overlay: „Kartenlayer sparsam — nicht alle Routen gleichzeitig
+ * bunt übereinander". Es ist ein Werkzeug zum Nachschlagen, keine
+ * Dauerdekoration.
+ *
+ * Liegt über den Höhenlinien, aber unter den Ortsnamen der Basiskarte und
+ * unter der eigenen Route — die eigene Tour bleibt das Auffälligste.
+ */
+export function addRouteOverlay(m: MlMap, layer: string, beforeId?: string): void {
+	m.addSource(SRC_ROUTE_OVERLAY, {
+		type: 'raster',
+		tiles: [overlayTiles(layer)],
+		tileSize: 256,
+		maxzoom: config.routeOverlayMaxZoom,
+		attribution: config.routeOverlayAttribution
+	});
+
+	m.addLayer(
+		{
+			id: LYR_ROUTE_OVERLAY,
+			type: 'raster',
+			source: SRC_ROUTE_OVERLAY,
+			layout: { visibility: 'none' },
+			// Nicht voll deckend: darunter liegen Wege und Höhenlinien, die
+			// beim Planen weiter lesbar bleiben müssen.
+			paint: { 'raster-opacity': 0.75 }
+		},
+		beforeId
+	);
+}
+
+export function setRouteOverlay(m: MlMap, visible: boolean, layer?: string): void {
+	if (!m.getLayer(LYR_ROUTE_OVERLAY)) return;
+	if (layer) {
+		const src = m.getSource(SRC_ROUTE_OVERLAY) as RasterTileSource | undefined;
+		// setTiles statt Quelle neu anlegen: die Ebene bliebe sonst kurz
+		// leer und flackerte beim Umschalten der Aktivitätsart.
+		src?.setTiles([overlayTiles(layer)]);
+	}
+	m.setLayoutProperty(LYR_ROUTE_OVERLAY, 'visibility', visible ? 'visible' : 'none');
 }
