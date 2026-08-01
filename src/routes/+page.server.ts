@@ -7,6 +7,21 @@ import type { Actions, PageServerLoad } from './$types';
 const SORTS: TourSort[] = ['updated', 'date', 'name', 'distance', 'ascent', 'duration'];
 
 /**
+ * `bbox=7.8,49.1,8.2,49.4` — der Regionsfilter aus 6.5.
+ *
+ * Kaputte Werte ergeben `null` statt eines Fehlers: eine Adresse, die
+ * jemand von Hand gekürzt hat, soll die Seite nicht zerlegen.
+ */
+function parseBbox(roh: string | null): [number, number, number, number] | null {
+	if (!roh) return null;
+	const n = roh.split(',').map(Number);
+	if (n.length !== 4 || !n.every(Number.isFinite)) return null;
+	if (n[0] >= n[2] || n[1] >= n[3]) return null;
+	if (n[0] < -180 || n[2] > 180 || n[1] < -90 || n[3] > 90) return null;
+	return [n[0], n[1], n[2], n[3]];
+}
+
+/**
  * Die Startseite ist das Archiv: Liste links, Karte rechts.
  *
  * Gefiltert wird auf dem Server und nicht im Browser — das bleibt bei
@@ -18,6 +33,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const a = url.searchParams.get('a');
 	const sort = url.searchParams.get('sort');
 	const q = url.searchParams.get('q');
+	const bbox = parseBbox(url.searchParams.get('bbox'));
 
 	// Unbekannte Werte fallen still zurück. Eine getippte Adresse soll
 	// keinen Fehler ergeben.
@@ -25,8 +41,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const sortiert = SORTS.includes(sort as TourSort) ? (sort as TourSort) : 'updated';
 
 	try {
-		const tours = await listTours(locals.ownerId, { activityType, sort: sortiert, q });
-		return { tours, filter: { activityType, sort: sortiert, q: q ?? '' } };
+		const tours = await listTours(locals.ownerId, { activityType, sort: sortiert, q, bbox });
+		return { tours, filter: { activityType, sort: sortiert, q: q ?? '', bbox } };
 	} catch (e) {
 		if (e instanceof DbError) error(e.kind === 'unreachable' ? 503 : 500, e.message);
 		throw e;

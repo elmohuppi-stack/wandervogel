@@ -30,9 +30,18 @@
 		/** Überfahrene Tour — Liste und Karte teilen sich diesen Zustand. */
 		hoveredId?: string | null;
 		onSelect?: (id: string) => void;
+		/**
+		 * Der Nutzer hat den Ausschnitt selbst verschoben.
+		 *
+		 * Nur echte Bewegungen: was die Karte auf eigene Anweisung tut
+		 * (Anflug auf einen Ort, auf den Standort, auf alle Touren), zählt
+		 * nicht — sonst erschiene der Knopf „in diesem Gebiet suchen"
+		 * schon beim Laden.
+		 */
+		onUserMoved?: (bbox: [number, number, number, number]) => void;
 	}
 
-	let { tours, hoveredId = $bindable(null), onSelect }: Props = $props();
+	let { tours, hoveredId = $bindable(null), onSelect, onUserMoved }: Props = $props();
 
 	let container: HTMLDivElement;
 	let map: MlMap | undefined;
@@ -47,6 +56,14 @@
 	let position = $state<Position | null>(null);
 	let locating = $state(false);
 	let locateError = $state<string | null>(null);
+
+	/** Zählt die von uns selbst ausgelösten Bewegungen mit, damit ihr
+	 *  `moveend` nicht als Nutzeraktion durchgeht. */
+	let eigeneBewegungen = 0;
+
+	function eigeneBewegung() {
+		eigeneBewegungen += 1;
+	}
 
 	function collection(): FeatureCollection {
 		return {
@@ -130,6 +147,15 @@
 				if (typeof id === 'string') onSelect?.(id);
 			});
 
+			m.on('moveend', () => {
+				if (eigeneBewegungen > 0) {
+					eigeneBewegungen -= 1;
+					return;
+				}
+				const b = m.getBounds();
+				onUserMoved?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+			});
+
 			ready = true;
 			fitToTours();
 		});
@@ -176,6 +202,7 @@
 			return;
 		}
 		position = r.position;
+		eigeneBewegung();
 		map?.flyTo({
 			center: [position.lon, position.lat],
 			zoom: Math.max(map.getZoom(), 12),
@@ -195,6 +222,7 @@
 	) {
 		if (!map) return;
 		const duration = prefersReducedMotion() ? 0 : 600;
+		eigeneBewegung();
 		const gross = bbox && (bbox[2] - bbox[0] > 0.002 || bbox[3] - bbox[1] > 0.002);
 		if (gross && bbox) {
 			map.fitBounds(
@@ -224,6 +252,7 @@
 			if (t.bbox[3] > maxY) maxY = t.bbox[3];
 		}
 		const duration = prefersReducedMotion() ? 0 : 400;
+		eigeneBewegung();
 
 		// Eine einzige, sehr kurze Tour ergibt eine entartete Box, auf die
 		// fitBounds bis in den Maximalzoom springt.

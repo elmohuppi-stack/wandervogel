@@ -18,6 +18,7 @@
 	import ActivityChips from '$lib/ui/ActivityChips.svelte';
 	import Alert from '$lib/ui/Alert.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import Chip from '$lib/ui/Chip.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import IconButton from '$lib/ui/IconButton.svelte';
@@ -36,6 +37,17 @@
 	let liste: HTMLDivElement | undefined = $state();
 	let mapRef = $state<ReturnType<typeof TourOverviewMap> | undefined>();
 	let ortungsfehler = $state<string | null>(null);
+	/** Ausschnitt, den der Nutzer gerade eingestellt hat — noch nicht als
+	 *  Filter übernommen. */
+	let gebiet = $state<[number, number, number, number] | null>(null);
+
+	function gebietSuchen() {
+		if (!gebiet) return;
+		// Fünf Nachkommastellen sind gut ein Meter — genug für einen
+		// Ausschnitt und kurz genug für eine lesbare Adresse.
+		setze({ bbox: gebiet.map((n) => n.toFixed(5)).join(',') });
+		gebiet = null;
+	}
 
 	const SORTIERUNGEN = [
 		['updated', 'Zuletzt geändert'],
@@ -46,7 +58,9 @@
 		['duration', 'Längste Dauer']
 	] as const;
 
-	const gefiltert = $derived(!!(data.filter.activityType || data.filter.q));
+	const gefiltert = $derived(
+		!!(data.filter.activityType || data.filter.q || data.filter.bbox)
+	);
 
 	/** Filter stehen in der Adresse: verlinkbar, und die Zurück-Taste stimmt. */
 	function setze(änderungen: Record<string, string | null>) {
@@ -105,6 +119,16 @@
 				onselect={(t: ActivityType | null) => setze({ a: t })}
 			/>
 
+			{#if data.filter.bbox}
+				<!-- Ein Filter, den man nicht sieht, ist ein Fehler: sonst
+				     sucht man die fehlenden Touren im Datenbestand. -->
+				<div class="gebiet-aktiv">
+					<Chip icon="layers" onclick={() => setze({ bbox: null })}>
+						Nur dieses Gebiet · aufheben
+					</Chip>
+				</div>
+			{/if}
+
 			<label class="sortierung">
 				<span class="visually-hidden">Sortierung</span>
 				<select
@@ -139,7 +163,7 @@
 							icon="close"
 							onclick={() => {
 								suche = '';
-								setze({ a: null, q: null });
+								setze({ a: null, q: null, bbox: null });
 							}}>Filter zurücksetzen</Button
 						>
 					{/snippet}
@@ -164,7 +188,19 @@
 			tours={data.tours}
 			bind:hoveredId
 			onSelect={(id: string) => goto(`/planen/${id}`)}
+			onUserMoved={(b) => (gebiet = b)}
 		/>
+
+		<!-- Erscheint erst, wenn der Nutzer den Ausschnitt selbst verschoben
+		     hat. Er sagt damit, was er sehen will — die Liste soll dem nicht
+		     ungefragt folgen, sondern es anbieten. -->
+		{#if gebiet}
+			<div class="gebiet-knopf">
+				<Button variant="primary" size="sm" icon="search" onclick={gebietSuchen}>
+					In diesem Gebiet suchen
+				</Button>
+			</div>
+		{/if}
 
 		<!-- Dieselben Werkzeuge wie in der Planungsansicht: dort wie hier
 		     gehören sie auf die Karte. Gesucht wird hier nach *Orten* — das
@@ -304,6 +340,20 @@
 		left: var(--sp-5);
 		z-index: var(--z-map-ui);
 		width: min(22rem, calc(100% - 2 * var(--sp-5) - var(--hit-sm) - var(--sp-4)));
+	}
+
+	.gebiet-aktiv {
+		display: flex;
+	}
+
+	.gebiet-knopf {
+		position: absolute;
+		top: var(--sp-5);
+		left: 50%;
+		translate: -50% 0;
+		z-index: var(--z-map-ui);
+		box-shadow: var(--el-2);
+		border-radius: var(--r-sm);
 	}
 
 	.karten-fehler {
