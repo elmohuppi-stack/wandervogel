@@ -24,8 +24,9 @@
 	import type { Feature, FeatureCollection, Point } from 'geojson';
 	import { CONTOUR_THRESHOLDS, config } from '$lib/config';
 	import { activity, type ActivityType } from '$lib/geo/activity';
-	import { prefersReducedMotion, resolveColorToken } from '$lib/ui/theme.svelte';
+	import { prefersReducedMotion, resolveColorToken, theme } from '$lib/ui/theme.svelte';
 	import type { RouteResult, Waypoint } from '$lib/tour/types';
+	import { paintFor } from './theme-paint';
 
 	interface Props {
 		activityType: ActivityType;
@@ -59,7 +60,7 @@
 	const LYR_WP = 'wv-waypoints-circle';
 
 	function routeColor(): string {
-		return resolveColorToken(activity(activityType).colorVar, '#b3382a');
+		return resolveColorToken(activity(activityType).mapColorVar, '#b3382a');
 	}
 
 	/* ------------------------------------------------------------------
@@ -415,12 +416,21 @@
 		setData(SRC_MARKER, markerFeature());
 	});
 
-	// Aktivitätsart wechselt die Routenfarbe — Topo-Konvention.
+	/**
+	 * Farben neu setzen, wenn die Aktivitätsart oder das Thema wechselt.
+	 *
+	 * `theme.resolved` wird absichtlich gelesen, auch wenn der Wert hier
+	 * nicht gebraucht wird: er ist die Abhängigkeit, die den Effekt beim
+	 * Umschalten erneut auslöst. Das Attribut auf dem Wurzelelement steht
+	 * zu diesem Zeitpunkt schon, deshalb liefern die Tokens die neuen Werte.
+	 */
 	$effect(() => {
+		void theme.resolved;
+		void activityType;
 		if (!ready || !map) return;
-		const c = routeColor();
-		map.setPaintProperty(LYR_ROUTE, 'line-color', c);
-		map.setPaintProperty(LYR_WP, 'circle-color', c);
+		for (const [layer, prop, value] of paintFor(activityType)) {
+			map.setPaintProperty(layer, prop, value);
+		}
 	});
 
 	/** Ausschnitt auf die Tour setzen. Von außen aufrufbar. */

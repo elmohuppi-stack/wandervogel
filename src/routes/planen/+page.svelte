@@ -10,11 +10,11 @@
 	 *    durch Ziehen in der Liste
 	 *  · Kennzahlen immer sichtbar, nie aufklappen
 	 */
-	import * as fmt from '$lib/format';
 	import { ACTIVITY_TYPES, activity } from '$lib/geo/activity';
 	import MapCanvas from '$lib/map/MapCanvas.svelte';
 	import { emptyTour, newId, type RouteResult, type Tour } from '$lib/tour/types';
 	import ElevationProfile from '$lib/ui/ElevationProfile.svelte';
+	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
 
 	let tour = $state<Tour>(emptyTour('hike'));
 	let route = $state<RouteResult | null>(null);
@@ -170,6 +170,8 @@
 		{#if routing}
 			<span class="status">Route wird berechnet …</span>
 		{/if}
+
+		<ThemeToggle size="sm" />
 
 		<a class="quiet" href="/planen">Touren</a>
 	</header>

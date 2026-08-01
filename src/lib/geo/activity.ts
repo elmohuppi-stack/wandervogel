@@ -63,8 +63,13 @@ export interface ActivityDefinition {
 	id: ActivityType;
 	/** Beschriftung in der Oberfläche. */
 	label: string;
-	/** CSS-Variable der Routenfarbe — Topo-Konvention: Wandern rot, Rad blau. */
+	/** CSS-Variable der Routenfarbe in der Oberfläche — Topo-Konvention:
+	 *  Wandern rot, Rad blau. Wechselt mit Hell und Dunkel. */
 	colorVar: string;
+	/** Dieselbe Farbe *auf der Karte*. Getrennt, weil die Basiskarte in
+	 *  beiden Modi hell ist: dort gilt das kräftige Topo-Rot, auf einem
+	 *  dunklen Panel das aufgehellte. */
+	mapColorVar: string;
 	/** Profildatei, die BRouter erhält. */
 	brouterProfile: string;
 	/** OSM-Relationstyp für das Routen-Overlay. */
@@ -101,6 +106,7 @@ export const ACTIVITIES: Record<ActivityType, ActivityDefinition> = {
 		id: 'hike',
 		label: 'Wandern',
 		colorVar: '--route-hike',
+		mapColorVar: '--map-route-hike',
 		brouterProfile: 'hiking-mountain',
 		osmRouteType: 'hiking',
 		routeLayerLabel: 'Wanderwege',
@@ -126,6 +132,7 @@ export const ACTIVITIES: Record<ActivityType, ActivityDefinition> = {
 		id: 'bike',
 		label: 'Rad',
 		colorVar: '--route-bike',
+		mapColorVar: '--map-route-bike',
 		brouterProfile: 'trekking',
 		osmRouteType: 'bicycle',
 		routeLayerLabel: 'Radrouten',

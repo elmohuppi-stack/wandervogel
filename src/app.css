@@ -35,7 +35,8 @@
 	--ink-2: light-dark(#4a524a, #a8b2ac);
 	--ink-3: light-dark(#767f75, #7d8882);
 
-	/* Aktivitätsarten */
+	/* Aktivitätsarten in der Bedienoberfläche. Dunkel aufgehellt, damit sie
+	   auf dunklen Flächen lesbar bleiben. */
 	--route-hike: light-dark(#b3382a, #e4614c);
 	--route-bike: light-dark(#2f5ea8, #6b9ede);
 
@@ -44,22 +45,33 @@
 	   diese Zeile fiele eine Komponente ohne setzenden Vorfahren auf Schwarz. */
 	--route: var(--route-hike);
 
-	/* Was auf einer Routenfarbe liegt — Zahl im Wegpunkt, Beschriftung.
-	   Nicht #fff: auf dem aufgehellten Dunkelmodus-Rot wären das 2,7:1. */
-	--on-route: light-dark(#ffffff, #12171a);
+	/* --- Kartenwelt ------------------------------------------------------
+	   Diese Farben sind auf die *Basiskarte* abgestimmt, nicht auf die
+	   Bedienoberfläche — und die Basiskarte ist in beiden Modi dieselbe
+	   helle. Deshalb haben sie bewusst keine dunkle Hälfte.
 
-	/* Kartenwelt */
-	--contour: light-dark(#a08a6b, #4d5a4f);
-	--contour-index: light-dark(#8a7250, #6b7c6d);
-	--water: light-dark(#6f97b8, #3f627d);
-	--wood: light-dark(#cdd8c4, #222c24);
+	   Ein erster Versuch ließ sie mitkippen: eine fast schwarze Schummerung
+	   über einer hellen Karte, das Ergebnis war matschig. Sie bekommen ihre
+	   dunkle Hälfte zusammen mit dem dunklen Kartenstil, wenn die eigenen
+	   Protomaps-Dateien stehen — dann in einem Schritt und aufeinander
+	   abgestimmt.
 
-	/* Schummerung und Routenfassung — von der Karte gelesen, deshalb hier
-	   und nicht in MapCanvas verdrahtet. */
-	--hs-shadow: light-dark(#6b6152, #05080a);
-	--hs-highlight: light-dark(#fffdf8, #4a5a62);
-	--hs-accent: light-dark(#8c8272, #2a3a42);
-	--route-casing: light-dark(#ffffff, #0d1113);
+	   Aus demselben Grund liegt die Routenfarbe *auf der Karte* getrennt
+	   von der in der Oberfläche: dort ein aufgehelltes Rot auf dunklem
+	   Panel, hier das kräftige Topo-Rot auf hellem Papier. Welche wo gilt,
+	   entscheidet die Aktivitätsdefinition. */
+	--map-route-hike: #b3382a;
+	--map-route-bike: #2f5ea8;
+	--contour: #a08a6b;
+	--contour-index: #8a7250;
+	--water: #6f97b8;
+	--wood: #cdd8c4;
+	--hs-shadow: #6b6152;
+	--hs-highlight: #fffdf8;
+	--hs-accent: #8c8272;
+	--route-casing: #ffffff;
+	/* Was auf einer Kartenroutenfarbe liegt — die Zahl im Wegpunkt. */
+	--on-route: #ffffff;
 
 	/* Semantik — nur für Zustände, nicht als Akzent */
 	--ok: light-dark(#2e7d53, #6cc38d);
@@ -221,6 +233,31 @@ button {
 	clip-path: inset(50%);
 	white-space: nowrap;
 	border: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   MapLibres eigene Bedienelemente
+   ---------------------------------------------------------------------------
+   Die Zoomknöpfe tragen schwarze SVG-Symbole, die sich nicht über Variablen
+   einfärben lassen. Im Dunkelmodus wären sie schwarz auf dunkel. Die Regeln
+   stehen hier und nicht in MapCanvas, weil die Symbole außerhalb des
+   Komponenten-Scopes liegen und beide Themenwege abgedeckt sein müssen.
+   --------------------------------------------------------------------------- */
+
+:root[data-theme='dark'] .maplibregl-ctrl-icon {
+	filter: invert(1);
+}
+:root[data-theme='dark'] .maplibregl-ctrl-attrib a {
+	color: var(--ink-2);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root[data-theme='system'] .maplibregl-ctrl-icon {
+		filter: invert(1);
+	}
+	:root[data-theme='system'] .maplibregl-ctrl-attrib a {
+		color: var(--ink-2);
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
