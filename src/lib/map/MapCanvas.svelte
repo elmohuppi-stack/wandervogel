@@ -12,20 +12,13 @@
 	 * alles kommt benannt herein.
 	 */
 	import { onMount } from 'svelte';
-	import {
-		Map as MlMap,
-		NavigationControl,
-		ScaleControl,
-		addProtocol,
-		type GeoJSONSource
-	} from 'maplibre-gl';
+	import { Map as MlMap, type GeoJSONSource } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
-	import mlcontour from 'maplibre-contour';
 	import type { Feature, FeatureCollection, Point } from 'geojson';
-	import { CONTOUR_THRESHOLDS, config } from '$lib/config';
 	import { activity, type ActivityType } from '$lib/geo/activity';
 	import { prefersReducedMotion, resolveColorToken, theme } from '$lib/ui/theme.svelte';
 	import type { RouteResult, Waypoint } from '$lib/tour/types';
+	import { addTerrainLayers, createMap } from './basemap';
 	import { paintFor } from './theme-paint';
 
 	interface Props {
@@ -122,137 +115,14 @@
 	   ------------------------------------------------------------------ */
 
 	onMount(() => {
-		// Höhendaten laufen über den eigenen Server. Ein gemeinsamer DemSource
-		// versorgt Schummerung *und* Höhenlinien, damit jede Kachel nur
-		// einmal geholt und dekodiert wird.
-		const dem = new mlcontour.DemSource({
-			// Bewusst zusammengesetzt statt über `new URL()`: das würde die
-			// Platzhalter zu %7Bz%7D prozentkodieren, und maplibre-contour
-			// könnte sie nicht mehr durch Kachelkoordinaten ersetzen.
-			url: window.location.origin + config.demTileUrl,
-			encoding: config.demEncoding,
-			maxzoom: config.demMaxZoom,
-			worker: true
-		});
-		dem.setupMaplibre({ addProtocol });
-
-		const m = new MlMap({
-			container,
-			style: config.basemapStyleUrl,
-			center: config.initialView.center,
-			zoom: config.initialView.zoom,
-			attributionControl: { compact: true },
-			// Klare Karte schlägt schnelle Karte: Beschriftungen dürfen nicht
-			// über Höhenlinien flackern.
-			fadeDuration: 0
-		});
+		const m = createMap(container);
 		map = m;
 
-		m.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
-		m.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left');
-
 		m.on('load', () => {
-			const styleLayers = m.getStyle().layers ?? [];
-
-			// Relief und Höhenlinien gehören *unter* die Beschriftungen.
-			const firstSymbol = styleLayers.find((l) => l.type === 'symbol')?.id;
-
-			/**
-			 * Schriftstapel aus der Basiskarte übernehmen.
-			 *
-			 * Ohne Angabe nimmt MapLibre `Open Sans Regular, Arial Unicode MS
-			 * Regular` an — den bietet OpenFreeMap nicht, das ergibt bei jedem
-			 * Laden eine 404-Anfrage. Aus dem Style gelesen funktioniert es mit
-			 * jeder Basiskarte, auch nach dem Wechsel auf eigene PMTiles.
-			 */
-			const textFont =
-				styleLayers
-					.filter((l) => l.type === 'symbol')
-					.map((l) => (l.layout as { 'text-font'?: string[] } | undefined)?.['text-font'])
-					.find((f): f is string[] => Array.isArray(f) && f.length > 0) ?? undefined;
-
-			m.addSource('wv-dem', {
-				type: 'raster-dem',
-				// `tiles`, nicht `url`: `url` erwartet ein TileJSON-Dokument und
-				// würde `dem-shared://{z}/{x}/{y}` wörtlich anfordern, ohne die
-				// Platzhalter zu ersetzen. Das Relief bliebe still aus.
-				tiles: [dem.sharedDemProtocolUrl],
-				tileSize: 256,
-				maxzoom: config.demMaxZoom
-			});
-
-			m.addLayer(
-				{
-					id: 'wv-hillshade',
-					type: 'hillshade',
-					source: 'wv-dem',
-					paint: {
-						// Zurückhaltend: das Relief soll die Karte stützen, nicht
-						// dominieren. Kräftigere Werte lassen bei überzoomten
-						// Höhendaten harte dunkle Flecken entstehen, unter denen
-						// Wege und Beschriftungen verschwinden.
-						'hillshade-exaggeration': 0.16,
-						'hillshade-shadow-color': resolveColorToken('--hs-shadow', '#6b6152'),
-						'hillshade-highlight-color': resolveColorToken('--hs-highlight', '#fffdf8'),
-						'hillshade-accent-color': resolveColorToken('--hs-accent', '#8c8272')
-					}
-				},
-				firstSymbol
-			);
-
-			m.addSource('wv-contours', {
-				type: 'vector',
-				tiles: [
-					dem.contourProtocolUrl({
-						thresholds: CONTOUR_THRESHOLDS,
-						elevationKey: 'ele',
-						levelKey: 'level',
-						contourLayer: 'contours',
-						// 512er-Kacheln nachnutzen statt neun Kacheln zu holen.
-						overzoom: 1
-					})
-				],
-				maxzoom: 15
-			});
-
-			m.addLayer(
-				{
-					id: 'wv-contour-lines',
-					type: 'line',
-					source: 'wv-contours',
-					'source-layer': 'contours',
-					paint: {
-						'line-color': resolveColorToken('--contour', '#a08a6b'),
-						// Jede fünfte Linie betont — so lesen sich Wanderkarten.
-						'line-width': ['match', ['get', 'level'], 1, 1.1, 0.6],
-						'line-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0, 11.5, 0.55]
-					}
-				},
-				firstSymbol
-			);
-
-			m.addLayer(
-				{
-					id: 'wv-contour-labels',
-					type: 'symbol',
-					source: 'wv-contours',
-					'source-layer': 'contours',
-					filter: ['>', ['get', 'level'], 0],
-					layout: {
-						'symbol-placement': 'line',
-						'text-field': ['concat', ['to-string', ['get', 'ele']], ' m'],
-						'text-size': 10,
-						'text-max-angle': 25,
-						...(textFont ? { 'text-font': textFont } : {})
-					},
-					paint: {
-						'text-color': resolveColorToken('--contour-index', '#8a7250'),
-						'text-halo-color': resolveColorToken('--paper-2', '#f4f6f1'),
-						'text-halo-width': 1.4
-					}
-				},
-				firstSymbol
-			);
+			// Relief und Höhenlinien kommen aus der geteilten Grundlage; sie
+			// liefert zugleich den Schriftstapel und die Einhängestelle.
+			const { firstSymbolId, textFont } = addTerrainLayers(m);
+			void firstSymbolId;
 
 			/* --- eigene Ebenen: Route, Wegpunkte, Profilmarker --- */
 
