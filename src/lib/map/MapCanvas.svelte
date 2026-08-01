@@ -55,6 +55,11 @@
 		 * und die gespeicherte Tour läge dann außerhalb des Bildes.
 		 */
 		onReady?: () => void;
+		/**
+		 * Linie zum Anschauen, bevor sie übernommen wird — eine gesuchte
+		 * OSM-Route oder eine gerade gelesene GPX-Datei. `[lon, lat]`.
+		 */
+		previewLine?: [number, number][] | null;
 	}
 
 	let {
@@ -67,7 +72,8 @@
 		onRemoveWaypoint,
 		showRouteOverlay = false,
 		startAtPosition = false,
-		onReady
+		onReady,
+		previewLine = null
 	}: Props = $props();
 
 	let container: HTMLDivElement;
@@ -77,6 +83,7 @@
 	const SRC_ROUTE = 'wv-route';
 	const SRC_WP = 'wv-waypoints';
 	const SRC_MARKER = 'wv-marker';
+	const SRC_PREVIEW = 'wv-preview';
 	const SRC_POS = SRC_POSITION;
 	const LYR_ROUTE = 'wv-route-line';
 	const LYR_WP = 'wv-waypoints-circle';
@@ -126,6 +133,20 @@
 		};
 	}
 
+	function previewFeature(): FeatureCollection {
+		if (!previewLine || previewLine.length < 2) return EMPTY;
+		return {
+			type: 'FeatureCollection',
+			features: [
+				{
+					type: 'Feature',
+					properties: {},
+					geometry: { type: 'LineString', coordinates: previewLine }
+				}
+			]
+		};
+	}
+
 	function markerFeature(): FeatureCollection {
 		if (markerAt == null || !route || route.coordinates.length < 2) return EMPTY;
 		const last = route.coordinates.length - 1;
@@ -166,6 +187,22 @@
 			m.addSource(SRC_ROUTE, { type: 'geojson', data: routeFeature() });
 			m.addSource(SRC_WP, { type: 'geojson', data: waypointFeatures() });
 			m.addSource(SRC_MARKER, { type: 'geojson', data: markerFeature() });
+			m.addSource(SRC_PREVIEW, { type: 'geojson', data: previewFeature() });
+
+			// Gestrichelt und in Tintenfarbe: sie ist ein Vorschlag, keine
+			// Tour. Die Unterscheidung muss ohne Legende erkennbar sein.
+			m.addLayer({
+				id: 'wv-preview-line',
+				type: 'line',
+				source: SRC_PREVIEW,
+				layout: { 'line-cap': 'round', 'line-join': 'round' },
+				paint: {
+					'line-color': resolveColorToken('--ink', '#171b17'),
+					'line-width': 3,
+					'line-opacity': 0.8,
+					'line-dasharray': [2, 1.6]
+				}
+			});
 
 			// Fassung darunter — hält die Route auf jedem Untergrund lesbar.
 			// Hell ist sie weiß, dunkel fast schwarz; deshalb ein Token.
@@ -354,6 +391,12 @@
 		setData(SRC_MARKER, markerFeature());
 	});
 
+	$effect(() => {
+		if (!ready) return;
+		void previewLine;
+		setData(SRC_PREVIEW, previewFeature());
+	});
+
 	/**
 	 * Farben neu setzen, wenn die Aktivitätsart oder das Thema wechselt.
 	 *
@@ -442,6 +485,28 @@
 		} else {
 			map.flyTo({ center: [lon, lat], zoom: 14, duration });
 		}
+	}
+
+	/** Ausschnitt auf eine beliebige Linie setzen. */
+	export function fitToLine(line: [number, number][], padding = 60) {
+		if (!map || line.length < 2) return;
+		let minX = 180;
+		let minY = 90;
+		let maxX = -180;
+		let maxY = -90;
+		for (const [lon, lat] of line) {
+			if (lon < minX) minX = lon;
+			if (lat < minY) minY = lat;
+			if (lon > maxX) maxX = lon;
+			if (lat > maxY) maxY = lat;
+		}
+		map.fitBounds(
+			[
+				[minX, minY],
+				[maxX, maxY]
+			],
+			{ padding, duration: prefersReducedMotion() ? 0 : 400 }
+		);
 	}
 
 	/** Ausschnitt auf die Tour setzen. Von außen aufrufbar. */

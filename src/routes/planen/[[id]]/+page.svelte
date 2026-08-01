@@ -18,6 +18,9 @@
 	import { beforeNavigate, replaceState } from '$app/navigation';
 	import { DEFAULT_ACTIVITY, activity } from '$lib/geo/activity';
 	import MapCanvas from '$lib/map/MapCanvas.svelte';
+	import { sampleElevations } from '$lib/geo/elevation';
+	import { deriveStats } from '$lib/geo/stats';
+	import { hasElevation, lineToWaypoints, thin } from '$lib/tour/uebernehmen';
 	import { emptyTour, newId, type RouteResult, type Tour } from '$lib/tour/types';
 	import Alert from '$lib/ui/Alert.svelte';
 	import Button from '$lib/ui/Button.svelte';
@@ -29,6 +32,7 @@
 	import MapTools from '$lib/ui/MapTools.svelte';
 	import Panel from '$lib/ui/Panel.svelte';
 	import PlaceSearch from '$lib/ui/PlaceSearch.svelte';
+	import RouteImport, { type Vorschau } from './RouteImport.svelte';
 	import PlannerTopbar from './PlannerTopbar.svelte';
 	import StartCard from './StartCard.svelte';
 	import WaypointList from './WaypointList.svelte';
@@ -61,6 +65,62 @@
 	 * Kommentar in theme.svelte.ts.
 	 */
 	let wegeOverlay = $state(browser && localStorage.getItem('wv.wegeOverlay') === '1');
+	let importRef = $state<ReturnType<typeof RouteImport> | undefined>();
+	let vorschau = $state<Vorschau | null>(null);
+
+	/** Die Vorschaulinie für die Karte — ausgedünnt, sie ist nur zum Sehen. */
+	const vorschauLinie = $derived(
+		vorschau ? thin(vorschau.coordinates, 1500).map(([lon, lat]) => [lon, lat] as [number, number]) : null
+	);
+
+	// Neue Vorschau ins Bild holen.
+	$effect(() => {
+		if (vorschauLinie && vorschauLinie.length > 1) mapRef?.fitToLine(vorschauLinie, 80);
+	});
+
+	/**
+	 * Vorschau zur Tour machen.
+	 *
+	 * Die Linie wird **genau** übernommen, nicht neu geroutet. Der erste
+	 * Versuch setzte Wegpunkte und ließ BRouter rechnen; nachgemessen am
+	 * Nibelungensteig fehlten dabei 16 % der Strecke, weil der Router
+	 * Kurven abschneidet. Auch 60 Wegpunkte brachten nur −7 % — und eine
+	 * unbenutzbare Liste.
+	 *
+	 * Fehlen die Höhen (OSM kennt keine), holen wir sie aus demselben
+	 * Höhenmodell, aus dem die Karte ihr Relief zeichnet.
+	 *
+	 * Wegpunkte kommen trotzdem, wenige und gleichmäßig: damit sich ein
+	 * Stück herausschneiden lässt, wie Anforderung 6.2 es verlangt. Wer
+	 * einen davon zieht, löst bewusst eine Neuberechnung aus.
+	 */
+	let uebernimmt = $state(false);
+
+	async function uebernehmen(v: Vorschau) {
+		if (uebernimmt) return;
+		uebernimmt = true;
+		routeError = null;
+		try {
+			let coords = v.coordinates;
+
+			if (!hasElevation(coords)) {
+				const hoehen = await sampleElevations(coords.map(([lon, lat]) => [lon, lat]));
+				coords = coords.map(([lon, lat], i) => [lon, lat, hoehen[i] ?? 0]);
+			}
+
+			tour.name = v.name.slice(0, 200);
+			tour.waypoints = lineToWaypoints(coords, 12);
+			route = { coordinates: coords, ...deriveStats(coords, tour.activityType) };
+			// Sagt dem Neuberechnungs-Effekt: für diesen Stand gibt es schon
+			// eine Route. Ohne das würde er sie sofort überschreiben.
+			routeKey = geometryKey(tour);
+			vorschau = null;
+		} catch {
+			routeError = 'Höhen konnten nicht ermittelt werden.';
+		} finally {
+			uebernimmt = false;
+		}
+	}
 
 	function wegeUmschalten() {
 		wegeOverlay = !wegeOverlay;
@@ -355,6 +415,7 @@
 			showRouteOverlay={wegeOverlay}
 			startAtPosition={!data.tour}
 			onReady={aufTourZentrieren}
+			previewLine={vorschauLinie}
 			onAddWaypoint={addWaypoint}
 			onMoveWaypoint={moveWaypoint}
 			onRemoveWaypoint={removeWaypoint}
@@ -392,9 +453,21 @@
 			</div>
 		{/if}
 
-		{#if tour.waypoints.length === 0}
-			<StartCard {def} />
+		{#if tour.waypoints.length === 0 && !vorschau}
+			<StartCard
+				{def}
+				onImportGpx={() => importRef?.gpxWaehlen()}
+				onSearchRoute={() => importRef?.routeSuchen()}
+			/>
 		{/if}
+
+		<RouteImport
+			bind:this={importRef}
+			activityType={tour.activityType}
+			bind:vorschau
+			laeuftUebernahme={uebernimmt}
+			onAdopt={uebernehmen}
+		/>
 
 		{#if routeError || saveError || ortungsfehler}
 			<div class="fehler">

@@ -61,6 +61,68 @@ export function tourToGpx(tour: Tour): string {
 	);
 }
 
+/* ---------------------------------------------------------------------------
+   Lesen (Weg C aus den Anforderungen 6.2)
+   --------------------------------------------------------------------------- */
+
+export interface GpxInhalt {
+	name?: string;
+	/** Stützpunkte als `[lon, lat, ele]`. Ohne `<ele>` steht dort 0. */
+	coordinates: [number, number, number][];
+}
+
+/**
+ * GPX lesen.
+ *
+ * Mit dem eingebauten DOMParser, ohne Abhängigkeit — und im Browser, damit
+ * die Datei den Rechner nicht verlässt, nur um geparst zu werden.
+ *
+ * Gelesen werden `trkpt` (aufgezeichnete oder geplante Spur) und als
+ * Rückfall `rtept` (Route). Viele Programme schreiben nur eines von beidem.
+ * Namensräume werden bewusst ignoriert: GPX-Dateien in der Wildnis halten
+ * sich nicht daran, und `getElementsByTagName` ist hier robuster als eine
+ * namensraumbewusste Abfrage.
+ */
+export function parseGpx(text: string): GpxInhalt {
+	const doc = new DOMParser().parseFromString(text, 'application/xml');
+
+	const fehler = doc.querySelector('parsererror');
+	if (fehler) throw new Error('Die Datei ist kein gültiges XML.');
+	if (doc.documentElement?.tagName.toLowerCase() !== 'gpx') {
+		throw new Error('Das ist keine GPX-Datei.');
+	}
+
+	const punkte = (tag: string) => Array.from(doc.getElementsByTagName(tag));
+	const knoten = punkte('trkpt').length > 0 ? punkte('trkpt') : punkte('rtept');
+
+	if (knoten.length < 2) {
+		throw new Error('Die Datei enthält keine Spur mit mindestens zwei Punkten.');
+	}
+
+	const coordinates: [number, number, number][] = [];
+	for (const k of knoten) {
+		const lat = Number(k.getAttribute('lat'));
+		const lon = Number(k.getAttribute('lon'));
+		if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+		if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+		const ele = Number(k.getElementsByTagName('ele')[0]?.textContent);
+		coordinates.push([lon, lat, Number.isFinite(ele) ? ele : 0]);
+	}
+
+	if (coordinates.length < 2) {
+		throw new Error('Keiner der Punkte in der Datei hat brauchbare Koordinaten.');
+	}
+
+	// Der Name steht je nach Programm im Metadatenblock oder an der Spur.
+	const name =
+		doc.querySelector('metadata > name')?.textContent?.trim() ||
+		doc.getElementsByTagName('trk')[0]?.getElementsByTagName('name')[0]?.textContent?.trim() ||
+		doc.getElementsByTagName('rte')[0]?.getElementsByTagName('name')[0]?.textContent?.trim() ||
+		undefined;
+
+	return { name, coordinates };
+}
+
 /** Dateiname aus dem Tournamen: `kalmit-ueber-die-hohe-loog.gpx` */
 export function gpxFilename(name: string): string {
 	const s = name

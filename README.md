@@ -20,14 +20,18 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 - **Hell und Dunkel** umschaltbar, hell als Standard — die Karte geht mit
 - **Ortssuche** und **eigener Standort** auf beiden Karten
 - **Markiertes Wegenetz** ein- und ausblendbar, passend zur Aktivitätsart
+- **Vorhandene Route übernehmen** (Weg B): markierte OSM-Routen nach Namen suchen,
+  mit Markierung, Betreiber und Untergrund — und als eigene Tour übernehmen
+- **GPX importieren** (Weg C), mit oder ohne Höhen in der Datei
+- **Höhen aus dem eigenen Höhenmodell**, im Browser aus den Terrarium-Kacheln gelesen
 - **Sicherung** der Nutzdaten mit einem Befehl
 
 ## Noch nicht
 
 Offline-Download · Feldansicht fürs Handy · Anmeldung und Rollen ·
-**eigenes** Wegenetz-Overlay aus einem OSM-Extrakt · eine OSM-Route als
-Tour übernehmen (Weg B) · GPX-Import (Weg C) · POIs · Wetter ·
-Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt
+**eigenes** Wegenetz-Overlay aus einem OSM-Extrakt · Untergrund entlang der
+Route auf der Karte einfärben · POIs · Wetter · Track-Aufzeichnung ·
+Vergleich geplant ↔ durchgeführt
 
 Die Reihenfolge steht in [Anforderungen §9](docs/01-anforderungen.md).
 
@@ -135,6 +139,7 @@ Fremd-Fair-Use-Dienste im Dauerbetrieb.
 | Routing | BRouter lokal | BRouter lokal |
 | Ortssuche | öffentliches Nominatim über `/api/suche` | eigene Nominatim-Instanz |
 | Wegenetz | waymarkedtrails-Raster | eigenes Vektor-Overlay aus OSM-Extrakt |
+| Routensuche | Waymarked-Trails-API über `/api/routen` | eigener OSM-Extrakt |
 
 Das Wegenetz ist die einzige zugelassene Fremdquelle für die Planung — die
 Anforderungen erlauben sie in Abschnitt 10 ausdrücklich, aber nur als
@@ -187,6 +192,15 @@ Festgehalten, damit sie nicht zweimal auftreten:
 - **Der Neuberechnungs-Effekt darf nicht beim Einhängen feuern.** Sonst wird eine
   gerade aus der Datenbank geladene Route neu geroutet — und wenn BRouter aus ist,
   durch `null` ersetzt. Ein Schlüssel aus Aktivitätsart und Wegpunkten verhindert das.
+- **Aus einer OSM-Relation wird keine Route durch Neurouten.** Am
+  Nibelungensteig gemessen: 25 Wegpunkte → 106,3 km statt 126,1 km (−16 %),
+  60 Wegpunkte immer noch −7 %. Der Router schneidet Kurven ab. Die Linie
+  wird deshalb genau übernommen und bekommt ihre Höhen aus dem eigenen
+  Höhenmodell.
+- **Aus dem Höhenmodell gelesene Aufstiege fallen hoch aus.** Ohne Glättung
+  4985 hm für einen Weg mit rund 3300 hm. Die Messreihe steht in
+  [`src/lib/geo/elevation.ts`](src/lib/geo/elevation.ts). Auch geditzt bleibt
+  ein Aufschlag — das ist bei jedem Tourenportal so.
 - **Web-Mercator braucht beide Achsen im Bogenmaß.** Grad für x und Bogenmaß für y
   streckt x um 180/π; in der Umriss-Vorschau sah damit jede Tour aus wie ein
   waagerechter Strich.

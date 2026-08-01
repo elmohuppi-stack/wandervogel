@@ -21,9 +21,10 @@
 		/** Erscheint erst, wenn es die Funktion gibt. Ein ausgegrautes
 		 *  Angebot ist schlechter als keines. */
 		onImportGpx?: () => void;
+		onSearchRoute?: () => void;
 	}
 
-	let { def, onImportGpx }: Props = $props();
+	let { def, onImportGpx, onSearchRoute }: Props = $props();
 </script>
 
 <div class="card">
@@ -32,6 +33,11 @@
 		echter {def.routeLayerLabel} berechnet.
 
 		{#snippet actions()}
+			{#if onSearchRoute}
+				<Button variant="quiet" size="sm" icon="search" onclick={onSearchRoute}>
+					{def.routeLayerLabel} suchen
+				</Button>
+			{/if}
 			{#if onImportGpx}
 				<Button variant="quiet" size="sm" icon="route" onclick={onImportGpx}>
 					GPX importieren

@@ -1,6 +1,10 @@
 import { env } from '$env/dynamic/private';
 import { activity, type ActivityType } from '$lib/geo/activity';
-import { toSegments, type RoutePoint } from '$lib/geo/duration';
+// deriveStats liegt in geo/stats, weil GPX-Import und OSM-Übernahme
+// dieselbe Rechnung im Browser brauchen. Hier weiterhin exportiert, damit
+// die Aufrufer sich nicht ändern müssen.
+import { deriveStats } from '$lib/geo/stats';
+export { deriveStats };
 import type { RouteResult, Waypoint } from '$lib/tour/types';
 import type { FeatureCollection } from 'geojson';
 
@@ -107,37 +111,3 @@ export async function calculateRoute(
 	return { ...deriveStats(coordinates, activityType), coordinates };
 }
 
-/**
- * Kennzahlen aus den Stützpunkten ableiten.
- *
- * Getrennt von der Netzanfrage, damit dieselbe Rechnung auch für
- * importierte GPX-Dateien und aufgezeichnete Tracks gilt — die Zahlen im
- * Archiv sollen unabhängig von ihrer Herkunft vergleichbar sein.
- */
-export function deriveStats(
-	coordinates: [number, number, number][],
-	activityType: ActivityType
-): Omit<RouteResult, 'coordinates'> {
-	const points: RoutePoint[] = coordinates.map(([lon, lat, ele]) => ({ lon, lat, ele }));
-	const segments = toSegments(points);
-
-	let distanceM = 0;
-	let ascentM = 0;
-	let descentM = 0;
-	for (const s of segments) {
-		distanceM += s.distanceM;
-		if (s.ascentM > 0) ascentM += s.ascentM;
-		else descentM += -s.ascentM;
-	}
-
-	const elevations = points.map((p) => p.ele);
-
-	return {
-		distanceM,
-		ascentM,
-		descentM,
-		minEleM: Math.min(...elevations),
-		maxEleM: Math.max(...elevations),
-		durationS: activity(activityType).durationS(segments)
-	};
-}
