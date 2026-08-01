@@ -16,16 +16,28 @@
 		name: string;
 		activityType: ActivityType;
 		routing: boolean;
-		/** Fehlt noch, bis die Datenbank steht. */
-		onSave?: () => void;
+		saving: boolean;
+		/** Es gibt ungespeicherte Änderungen. */
+		dirty: boolean;
+		/** Ohne Route gibt es nichts zu speichern. */
+		canSave: boolean;
+		onSave: () => void;
 	}
 
 	let {
 		name = $bindable(),
 		activityType = $bindable(),
 		routing,
+		saving,
+		dirty,
+		canSave,
 		onSave
 	}: Props = $props();
+
+	// Drei Zustände, drei Beschriftungen. „Gespeichert" bleibt stehen statt
+	// zu verschwinden — ein Knopf, der wegspringt, lässt zweifeln, ob es
+	// geklappt hat.
+	const beschriftung = $derived(saving ? 'Speichert …' : dirty ? 'Speichern' : 'Gespeichert');
 
 	// Aus der Naht erzeugt, nicht aufgezählt: eine dritte Aktivitätsart
 	// erscheint hier von selbst.
@@ -60,14 +72,15 @@
 	<ThemeToggle size="sm" />
 
 	<Button
-		variant="primary"
+		variant={dirty ? 'primary' : 'quiet'}
 		size="sm"
-		icon="save"
-		disabled={!onSave}
-		title={onSave ? 'Tour speichern' : 'Speichern kommt mit der Datenbank'}
+		icon={dirty || saving ? 'save' : 'check'}
+		loading={saving}
+		disabled={!canSave || !dirty}
+		title={canSave ? 'Tour speichern (Strg+S)' : 'Erst eine Route berechnen lassen'}
 		onclick={onSave}
 	>
-		Speichern
+		{beschriftung}
 	</Button>
 </header>
 
