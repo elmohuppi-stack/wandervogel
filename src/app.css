@@ -40,6 +40,11 @@
 	--route-hike: light-dark(#b3382a, #e4614c);
 	--route-bike: light-dark(#2f5ea8, #6b9ede);
 
+	/* Was in der Oberfläche *auf* einer Routenfarbe liegt — die Nummer im
+	   Wegpunktschildchen. Dunkel nicht weiß: auf dem aufgehellten Rot wären
+	   das 2,7:1, also unter AA. */
+	--on-route: light-dark(#ffffff, #12171a);
+
 	/* Voreinstellung für alles, was `--route` erbt (Höhenprofil, Wegpunkt-
 	   Nummern, Tourenkarten). Die Ansicht überschreibt sie je Tour; ohne
 	   diese Zeile fiele eine Komponente ohne setzenden Vorfahren auf Schwarz. */
@@ -70,8 +75,9 @@
 	--hs-highlight: #fffdf8;
 	--hs-accent: #8c8272;
 	--route-casing: #ffffff;
-	/* Was auf einer Kartenroutenfarbe liegt — die Zahl im Wegpunkt. */
-	--on-route: #ffffff;
+	/* Die Zahl im Wegpunktkreis *auf der Karte*. Dort gilt immer das
+	   kräftige Topo-Rot, also immer Weiß. */
+	--map-on-route: #ffffff;
 
 	/* Semantik — nur für Zustände, nicht als Akzent */
 	--ok: light-dark(#2e7d53, #6cc38d);

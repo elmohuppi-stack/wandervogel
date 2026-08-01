@@ -13,6 +13,7 @@
 	import { activity, type ActivityType } from '$lib/geo/activity';
 	import * as fmt from '$lib/format';
 	import type { RouteResult } from '$lib/tour/types';
+	import Icon from './Icon.svelte';
 
 	interface Props {
 		route: RouteResult | null;
@@ -86,6 +87,7 @@
 
 <div class="profile" data-collapsed={collapsed}>
 	<div class="head">
+		<Icon name="profile" size={14} class="titel-icon" />
 		<span class="label">Höhenprofil</span>
 
 		{#if hasProfile}
@@ -97,7 +99,7 @@
 				</svg>
 			</span>
 		{:else}
-			<span class="empty">Noch keine Route</span>
+			<span class="empty">Entsteht mit der Route</span>
 		{/if}
 
 		{#if hoverKm && hoverEle != null}
@@ -111,7 +113,7 @@
 			onclick={toggle}
 			disabled={!hasProfile}
 		>
-			<span class="caret" aria-hidden="true">▼</span>
+			<Icon name="chevron-down" size={12} class="caret" />
 			{collapsed ? 'Profil zeigen' : 'Einklappen'}
 		</button>
 	</div>
@@ -240,14 +242,11 @@
 		opacity: 0.4;
 		cursor: default;
 	}
-	.caret {
-		display: inline-block;
-		font-size: 9px;
-		line-height: 1;
-		transition: transform 0.16s ease;
+	.toggle :global(.caret) {
+		transition: rotate var(--dur-2) var(--ease);
 	}
-	.profile[data-collapsed='true'] .caret {
-		transform: rotate(180deg);
+	.profile[data-collapsed='true'] .toggle :global(.caret) {
+		rotate: 180deg;
 	}
 
 	.plot {

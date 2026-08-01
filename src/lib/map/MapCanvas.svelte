@@ -317,7 +317,7 @@
 					'text-ignore-placement': true,
 					...(textFont ? { 'text-font': textFont } : {})
 				},
-				paint: { 'text-color': resolveColorToken('--on-route', '#ffffff') }
+				paint: { 'text-color': resolveColorToken('--map-on-route', '#ffffff') }
 			});
 
 			wireInteractions(m);
@@ -325,6 +325,8 @@
 		});
 
 		return () => {
+			for (const c of cleanups) c();
+			cleanups.length = 0;
 			m.remove();
 			map = undefined;
 		};
@@ -333,6 +335,9 @@
 	/* ------------------------------------------------------------------
 	   Interaktion — ohne Menüs, das war die Anforderung
 	   ------------------------------------------------------------------ */
+
+	/** Aufräumarbeiten, die `m.remove()` nicht selbst erledigt. */
+	const cleanups: (() => void)[] = [];
 
 	function wireInteractions(m: MlMap) {
 		let dragId: string | null = null;
@@ -345,15 +350,29 @@
 			onAddWaypoint?.(e.lngLat.lng, e.lngLat.lat);
 		});
 
-		// Rechtsklick auf einen Wegpunkt löscht ihn.
-		m.on('contextmenu', (e) => {
-			const hits = m.queryRenderedFeatures(e.point, { layers: [LYR_WP] });
+		/**
+		 * Rechtsklick auf einen Wegpunkt löscht ihn.
+		 *
+		 * Bewusst am DOM-Ereignis und nicht an `m.on('contextmenu')`.
+		 * MapLibres BlockableMapEventHandler setzt in `reset()` ein
+		 * `_ignoreContextMenu = true`, das nur ein *linker* mousedown wieder
+		 * aufhebt. Nach der ersten Interaktion mit der Karte verschluckt es
+		 * deshalb jeden Rechtsklick — still, ohne Fehler. Nachgemessen: der
+		 * Handler wurde kein einziges Mal aufgerufen.
+		 */
+		const canvasContainer = m.getCanvasContainer();
+		const onContextMenu = (ev: MouseEvent) => {
+			const rect = m.getCanvas().getBoundingClientRect();
+			const point: [number, number] = [ev.clientX - rect.left, ev.clientY - rect.top];
+			const hits = m.queryRenderedFeatures(point, { layers: [LYR_WP] });
 			const id = hits[0]?.properties?.id;
 			if (typeof id === 'string') {
-				e.preventDefault();
+				ev.preventDefault();
 				onRemoveWaypoint?.(id);
 			}
-		});
+		};
+		canvasContainer.addEventListener('contextmenu', onContextMenu);
+		cleanups.push(() => canvasContainer.removeEventListener('contextmenu', onContextMenu));
 
 		m.on('mouseenter', LYR_WP, () => {
 			m.getCanvas().style.cursor = 'grab';
