@@ -34,3 +34,15 @@ export function arrival(seconds: number, from = new Date()): string {
 export function speed(kmh: number): string {
 	return nf1.format(kmh);
 }
+
+const df = new Intl.DateTimeFormat('de-DE', {
+	day: '2-digit',
+	month: 'short',
+	year: 'numeric'
+});
+
+/** Tourdatum aus `2026-08-15`: `15. Aug. 2026` */
+export function day(iso: string): string {
+	// Mittags erzeugt, damit die Zeitzone den Tag nicht verschiebt.
+	return df.format(new Date(`${iso}T12:00:00`));
+}
