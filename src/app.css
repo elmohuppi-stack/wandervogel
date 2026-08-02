@@ -165,7 +165,7 @@
 
 	/* Feste Maße, die Layout und Karte teilen */
 	--topbar-h: 48px;
-	--rail-w: 288px;
+	--rail-w: 320px;
 	--list-w: 384px;
 	--profile-h: 132px;
 }

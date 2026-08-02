@@ -67,6 +67,7 @@
 	let wegeOverlay = $state(browser && localStorage.getItem('wv.wegeOverlay') === '1');
 	let importRef = $state<ReturnType<typeof RouteImport> | undefined>();
 	let vorschau = $state<Vorschau | null>(null);
+	let importBelegt = $state(false);
 
 	/** Die Vorschaulinie für die Karte — ausgedünnt, sie ist nur zum Sehen. */
 	const vorschauLinie = $derived(
@@ -453,23 +454,6 @@
 			</div>
 		{/if}
 
-		{#if tour.waypoints.length === 0 && !vorschau}
-			<StartCard
-				{def}
-				onImportGpx={() => importRef?.gpxWaehlen()}
-				onSearchRoute={() => importRef?.routeSuchen()}
-			/>
-		{/if}
-
-		<RouteImport
-			bind:this={importRef}
-			activityType={tour.activityType}
-			bind:vorschau
-			laeuftUebernahme={uebernimmt}
-			bounds={() => mapRef?.bounds() ?? null}
-			onAdopt={uebernehmen}
-		/>
-
 		{#if routeError || saveError || ortungsfehler}
 			<div class="fehler">
 				<Alert
@@ -485,8 +469,28 @@
 		{/if}
 	</main>
 
-	<!-- Rechte Schiene: Kennzahlen und Wegpunkte, immer sichtbar. -->
+	<!-- Rechte Schiene: Kennzahlen und Wegpunkte, immer sichtbar.
+	     Auch alles, was sonst über der Karte schweben würde — die Karte
+	     ist die Hauptsache und darf nichts verdecken. -->
 	<aside class="rail">
+		<RouteImport
+			bind:this={importRef}
+			activityType={tour.activityType}
+			bind:vorschau
+			laeuftUebernahme={uebernimmt}
+			bounds={() => mapRef?.bounds() ?? null}
+			bind:belegt={importBelegt}
+			onAdopt={uebernehmen}
+		/>
+
+		{#if tour.waypoints.length === 0 && !importBelegt}
+			<StartCard
+				{def}
+				onImportGpx={() => importRef?.gpxWaehlen()}
+				onSearchRoute={() => importRef?.routeSuchen()}
+			/>
+		{/if}
+
 		<!-- Datum und Notiz sind Angaben zur Tour, keine Kennzahlen. Die
 		     Regel „nie erst aufklappen" gilt den Zahlen; trotzdem bekommt
 		     auch das hier kein Akkordeon. -->
@@ -617,7 +621,9 @@
 		min-height: 0;
 		background: var(--surface);
 		border-left: 1px solid var(--edge);
-		overflow: hidden;
+		/* Die Schiene trägt jetzt auch die Suche und die Vorschau. Bei
+		   kleinem Fenster wird das zu viel — dann scrollt sie als Ganzes. */
+		overflow-y: auto;
 	}
 
 	.werkzeuge-links {

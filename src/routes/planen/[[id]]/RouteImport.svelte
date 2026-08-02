@@ -8,6 +8,10 @@
 	 * gestrichelt, mit Kennzahlen und Untergrund — und wird erst auf
 	 * ausdrücklichen Knopfdruck zur Tour. Eine Übernahme, die den aktuellen
 	 * Stand überschreibt, darf nicht aus Versehen passieren.
+	 *
+	 * Sitzt in der Schiene, nicht über der Karte. Der erste Entwurf schwebte
+	 * mittig darüber — und verdeckte damit die Linie, die man sich gerade
+	 * ansehen wollte.
 	 */
 	import { activity, type ActivityType } from '$lib/geo/activity';
 	import * as fmt from '$lib/format';
@@ -17,6 +21,7 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import IconButton from '$lib/ui/IconButton.svelte';
+	import Panel from '$lib/ui/Panel.svelte';
 
 	interface Treffer {
 		id: number;
@@ -48,6 +53,9 @@
 		laeuftUebernahme?: boolean;
 		/** Aktueller Kartenausschnitt, für „was liegt hier". */
 		bounds?: () => [number, number, number, number] | null;
+		/** Ob das Panel Platz beansprucht — die Seite blendet dann den
+		 *  Leerzustand aus, damit nicht zwei Anleitungen konkurrieren. */
+		belegt?: boolean;
 		onAdopt: (v: Vorschau) => void;
 	}
 
@@ -56,8 +64,14 @@
 		vorschau = $bindable(),
 		laeuftUebernahme = false,
 		bounds,
+		belegt = $bindable(false),
 		onAdopt
 	}: Props = $props();
+
+	// Ein abgeleiteter Wert, den die Seite mitliest.
+	$effect(() => {
+		belegt = offen || vorschau !== null;
+	});
 
 	let offen = $state(false);
 	let text = $state('');
@@ -226,9 +240,17 @@
 
 {#if vorschau}
 	<!-- Vorschau: was man bekommt, bevor man es nimmt. -->
-	<div class="karte vorschau">
-		<div class="kopf">
-			<Icon name="route" size={16} />
+	<div class="vorschau">
+		<Panel title="Gefundene Route" icon="route">
+			{#snippet actions()}
+				<IconButton
+					icon="close"
+					label="Vorschau verwerfen"
+					size="sm"
+					onclick={() => (vorschau = null)}
+				/>
+			{/snippet}
+
 			<div class="titel">
 				<b>{vorschau.name}</b>
 				{#if vorschau.stufe || vorschau.operator}
@@ -237,8 +259,6 @@
 					</span>
 				{/if}
 			</div>
-			<IconButton icon="close" label="Vorschau verwerfen" onclick={() => (vorschau = null)} />
-		</div>
 
 		{#if vorschau.markierung}
 			<p class="markierung"><Icon name="layers" size={12} /> {vorschau.markierung}</p>
@@ -288,28 +308,37 @@
 			Ein paar Wegpunkte werden gesetzt, damit sich ein Stück herausschneiden lässt.
 		</p>
 
-		<div class="aktionen">
-			<Button
-				variant="primary"
-				icon="check"
-				loading={laeuftUebernahme}
-				onclick={() => vorschau && onAdopt(vorschau)}
-			>
-				{laeuftUebernahme ? 'Höhen werden geholt …' : 'Als Tour übernehmen'}
-			</Button>
-			<Button variant="ghost" disabled={laeuftUebernahme} onclick={() => (vorschau = null)}>
-				Verwerfen
-			</Button>
-		</div>
+			<div class="aktionen">
+				<Button
+					variant="primary"
+					wide
+					icon="check"
+					loading={laeuftUebernahme}
+					onclick={() => vorschau && onAdopt(vorschau)}
+				>
+					{laeuftUebernahme ? 'Höhen werden geholt …' : 'Als Tour übernehmen'}
+				</Button>
+			</div>
+		</Panel>
 	</div>
 {:else if offen}
-	<div class="karte suche">
+	<Panel title="{def.routeLayerLabel} finden" icon="search">
+		{#snippet actions()}
+			<IconButton
+				icon="crosshair"
+				label="Umgebung neu absuchen"
+				size="sm"
+				onclick={gebietLaden}
+			/>
+			<IconButton icon="close" label="Schließen" size="sm" onclick={schliessen} />
+		{/snippet}
+
 		<div class="feld">
 			<Icon name="search" size={14} />
 			<input
 				bind:this={feld}
 				type="text"
-				placeholder="Name suchen oder Liste unten durchsehen …"
+				placeholder="Name eingrenzen …"
 				value={text}
 				oninput={(e) => getippt(e.currentTarget.value)}
 				onkeydown={(e) => e.key === 'Escape' && schliessen()}
@@ -318,13 +347,6 @@
 				spellcheck="false"
 			/>
 			{#if laeuft}<Icon name="loader" size={14} class="spin" />{/if}
-			<IconButton
-				icon="crosshair"
-				label="Umgebung neu absuchen"
-				size="sm"
-				onclick={gebietLaden}
-			/>
-			<IconButton icon="close" label="Schließen" size="sm" onclick={schliessen} />
 		</div>
 
 		{#if fehler}
@@ -374,44 +396,26 @@
 			<p class="tipp">Nichts gefunden. Tippfehler? Oder den Ausschnitt verschieben und leeren.</p>
 		{:else}
 			<p class="tipp">
-				Hier stehen die markierten Wege aus dem Kartenausschnitt. Verschiebe die Karte
-				hinter diesem Fenster, um andere zu sehen — oder tippe einen Namen.
+				Hier stehen die markierten Wege aus dem Kartenausschnitt. Karte verschieben,
+				dann das Fadenkreuz drücken.
 			</p>
 		{/if}
-	</div>
+	</Panel>
 {/if}
 
 <style>
-	.karte {
-		position: absolute;
-		top: calc(var(--sp-5) + var(--hit-sm) + var(--sp-4));
-		left: 50%;
-		translate: -50% 0;
-		z-index: var(--z-popover);
-		width: min(30rem, calc(100% - 2 * var(--sp-6)));
-		padding: var(--sp-5) var(--sp-6);
-		background: var(--surface);
-		border: 1px solid var(--edge);
-		border-radius: var(--r-md);
-		box-shadow: var(--el-3);
-	}
 
-	.kopf {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--sp-4);
-		color: var(--ink-3);
-	}
 
 	.titel {
-		flex: 1;
 		min-width: 0;
 	}
 
 	b {
 		display: block;
 		color: var(--ink);
-		font-size: var(--fs-base);
+		font-size: var(--fs-sm);
+		line-height: 1.3;
+		overflow-wrap: anywhere;
 	}
 
 	.unter {
@@ -429,14 +433,18 @@
 		color: var(--ink-2);
 	}
 
+	/* In der Schiene ist kein Platz für zwei Spalten mit langen Ortsnamen. */
 	.zahlen {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: var(--sp-3) var(--sp-5);
+		gap: var(--sp-3) var(--sp-4);
 		margin: var(--sp-5) 0 0;
 	}
 	.zahlen .weit {
 		grid-column: 1 / -1;
+	}
+	.zahlen dd {
+		overflow-wrap: anywhere;
 	}
 	dt {
 		font-size: var(--fs-xs);
@@ -468,7 +476,7 @@
 		list-style: none;
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--sp-2) var(--sp-5);
+		gap: var(--sp-2) var(--sp-4);
 		margin: var(--sp-3) 0 0;
 		padding: 0;
 		font-size: var(--fs-xs);
@@ -518,8 +526,6 @@
 	}
 
 	.aktionen {
-		display: flex;
-		gap: var(--sp-4);
 		margin-top: var(--sp-5);
 	}
 
@@ -567,7 +573,8 @@
 		list-style: none;
 		margin: var(--sp-3) 0 0;
 		padding: 0;
-		max-height: 24rem;
+		/* Höher als in der Mitte der Karte: die Schiene hat die Höhe. */
+		max-height: 26rem;
 		overflow-y: auto;
 		border-top: 1px solid var(--edge-soft);
 	}
@@ -576,7 +583,7 @@
 		align-items: center;
 		gap: var(--sp-3);
 		width: 100%;
-		padding: var(--sp-4);
+		padding: var(--sp-3);
 		border: 0;
 		border-radius: var(--r-xs);
 		background: transparent;

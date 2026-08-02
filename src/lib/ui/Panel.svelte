@@ -40,6 +40,10 @@
 		border-bottom: 1px solid var(--edge-soft);
 		display: flex;
 		flex-direction: column;
+		/* Nicht schrumpfen. In einer scrollenden Schiene würde Flex das
+		   Panel sonst stauchen, und der Inhalt liefe sichtbar über das
+		   nächste — Text auf Text. */
+		flex: none;
 		min-height: 0;
 	}
 
