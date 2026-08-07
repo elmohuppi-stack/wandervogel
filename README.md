@@ -1,7 +1,11 @@
 # Wandervogel
 
-Eigene Web-App zum Planen und Durchführen von **Wander- und Radtouren** — offline-fähig,
-selbst gehostet, ohne API-Schlüssel und ohne Fremddienste im Dauerbetrieb.
+Eigene Web-App zum Planen und Durchführen von **Wander- und Radtouren** — selbst gehostet,
+ohne API-Schlüssel und ohne Fremddienste im Dauerbetrieb.
+
+> **Wandervogel ist eine Online-App.** Ohne Netz startet sie nicht. Der Offline-Betrieb war
+> bis zum 7. August 2026 der erklärte Kernnutzen und ist gestrichen — mit Rechnung und Preis
+> in [Anforderungen §11](docs/01-anforderungen.md).
 
 Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md).
 
@@ -29,12 +33,18 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 
 ## Noch nicht
 
-Offline-Download · Feldansicht fürs Handy · Anmeldung und Rollen ·
+Feldansicht fürs Handy · Anmeldung und Rollen ·
 **eigenes** Wegenetz-Overlay aus einem OSM-Extrakt · Untergrund entlang der
 Route auf der Karte einfärben · POIs · Wetter · Track-Aufzeichnung ·
 Vergleich geplant ↔ durchgeführt
 
 Die Reihenfolge steht in [Anforderungen §9](docs/01-anforderungen.md).
+
+## Ausdrücklich nicht
+
+Offline-Download, Service Worker, PWA-Installation, Kartenkacheln auf dem Gerät. Gestrichen
+am 7. August 2026, nicht verschoben — [Anforderungen §11](docs/01-anforderungen.md) nennt
+Gewinn und Preis. Wer das wieder aufnehmen will, liest dort zuerst „Der Weg zurück".
 
 ## Einrichten
 
@@ -90,9 +100,9 @@ unverändert weiter.
 | Karte | MapLibre GL, direkt angesprochen | MapLibre ist imperativ; eine deklarative Hülle arbeitet dagegen |
 | Routing | BRouter, selbst gehostet | als Fahrrad-Router entstanden, um Wanderprofile erweitert — beide Aktivitäten über *eine* Engine |
 | Höhendaten | Terrarium-Kacheln über `/api/dem` | die offenen Quellen senden kein CORS; der Umweg ist zugleich die Produktionsarchitektur |
-| Höhenlinien | `maplibre-contour` im Browser | keine vorgerenderten Kacheln nötig, funktioniert später offline |
+| Höhenlinien | `maplibre-contour` im Browser | keine vorgerenderten Kacheln nötig — die Linien entstehen aus dem Höhenmodell, das ohnehin geladen wird |
 | Datenbank | Postgres + PostGIS, Drizzle | Route als `geometry(LineStringZ)`: der Regionsfilter ist ein `ST_Intersects` auf einem GiST-Index statt einer Schleife in Node |
-| Symbole | eigener Satz, lokal gebündelt | die Feldansicht darf nichts nachladen; fünf gebrauchte Glyphen gibt es fertig nirgends |
+| Symbole | eigener Satz, lokal gebündelt | keine Fremddienste im Dauerbetrieb; fünf gebrauchte Glyphen gibt es fertig nirgends |
 
 ### Zwei Farbwelten, ein Tokensatz
 
@@ -107,7 +117,7 @@ steht.
 
 Alles Aktivitätsabhängige steht in **einer** Datei:
 [`src/lib/geo/activity.ts`](src/lib/geo/activity.ts) — Routing-Profil, Zeitmodell,
-Kennzahlen, Kartenlayer, POI-Gruppen, Offline-Vorbelegungen, Warnschwelle.
+Kennzahlen, Kartenlayer, POI-Gruppen, Warnschwelle.
 
 > **Regel:** Im Code steht nirgendwo `if (activityType === 'hike')`.
 > Fehlt etwas, wird es ein Feld in der Aktivitätsdefinition — nicht eine Verzweigung
@@ -118,7 +128,8 @@ Kennzahlen, Kartenlayer, POI-Gruppen, Offline-Vorbelegungen, Warnschwelle.
 Ausführlich in [Anforderungen §7](docs/01-anforderungen.md); hier das Nötigste beim Coden.
 
 1. **Jede Aktion hat ein Symbol.** Aus dem eigenen Iconsatz, eine Strichstärke, lokal
-   gebündelt — die Feldansicht darf nichts nachladen. Kein `×` und kein `⠿` als Textzeichen.
+   gebündelt — nichts wird von fremden Servern nachgeladen. Kein `×` und kein `⠿` als
+   Textzeichen.
 2. **Gesten sind ein Zusatz, nie die einzige Tür.** Rechtsklick löscht *und* daneben steht
    ein Papierkorb. Was nur mit der Maus geht, gibt es auf dem Handy nicht.
 3. **Maße kommen aus Tokens.** Abstand, Radius, Ebene, Bewegung, Schatten stehen in
