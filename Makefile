@@ -225,7 +225,7 @@ db-admin-hilfe:
 	@echo ''
 	@echo '  NAME     Anmeldename. Mindestens 3 Zeichen aus a-z 0-9 . _ - + @'
 	@echo '           Eine E-Mail-Adresse ist damit ein gültiger Name.'
-	@echo '  PASS     Passwort, mindestens 10 Zeichen. In Anführungszeichen'
+	@echo '  PASS     Passwort, mindestens 4 Zeichen. In Anführungszeichen'
 	@echo '           setzen, sonst frisst die Shell $$ ! und Leerzeichen.'
 	@echo '  ANZEIGE  Anzeigename, wie er in der App steht. Optional;'
 	@echo '           ohne Angabe wird NAME genommen.'

@@ -145,6 +145,35 @@ export async function otherActiveAdmins(exceptId: string): Promise<number> {
 }
 
 /**
+ * Konto endgültig entfernen, samt seiner Touren.
+ *
+ * **Die Touren gehen mit, und das ist keine Bequemlichkeit.** Die
+ * Datenschutzerklärung sagt zu: „Touren bleiben, bis Sie sie löschen oder
+ * das Konto entfernt wird." Ein Löschen, das die Routen stehen ließe, wäre
+ * ein gebrochenes Versprechen — und Routen sind Ortsangaben, also gerade
+ * der Teil, dessentwegen jemand die Löschung verlangt.
+ *
+ * Der Fremdschlüssel bleibt trotzdem auf `restrict` statt auf `cascade`:
+ * so scheitert ein versehentliches `DELETE FROM users` in psql weiterhin,
+ * und der einzige Weg, der Touren mitnimmt, ist dieser hier — wo die
+ * Oberfläche vorher gefragt und die Zahl genannt hat.
+ *
+ * Gibt die Zahl der mitgelöschten Touren zurück, oder `null`, wenn es das
+ * Konto nicht gab.
+ */
+export async function deleteUser(id: string): Promise<number | null> {
+	return db.transaction(async (tx) => {
+		const [vorhanden] = await tx.select({ id: users.id }).from(users).where(eq(users.id, id));
+		if (!vorhanden) return null;
+
+		const weg = await tx.delete(tours).where(eq(tours.ownerId, id)).returning({ id: tours.id });
+		// Sitzungen hängen mit `cascade` daran und gehen von selbst.
+		await tx.delete(users).where(eq(users.id, id));
+		return weg.length;
+	});
+}
+
+/**
  * Übernimmt die Touren des Übergangskontos aus Migration 0001.
  *
  * Vor der Anmeldung gehörten alle Touren einer Konstanten. Die Migration

@@ -214,12 +214,32 @@ Der MVP-Schnitt ist „Mittel" (Abschnitt 7).
 > eigene Router und fremde Fair-Use-Dienste. Deshalb kommt mit dem Gastzugang eine
 > Begrenzung je IP-Adresse — ohne sie wäre das ein offener Router im Netz.
 
+> **Nachtrag 8. August 2026 — Löschen, Begriff, Passwortlänge.**
+>
+> **Löschen nimmt die Touren mit.** Die Datenschutzerklärung sagt zu: „Touren bleiben, bis
+> Sie sie löschen oder das Konto entfernt wird." Ein Löschen, das die Routen stehen ließe,
+> wäre ein gebrochenes Versprechen — und Routen sind Ortsangaben, also gerade der Teil,
+> dessentwegen jemand die Löschung verlangt. Der Fremdschlüssel bleibt trotzdem auf
+> `restrict`: ein versehentliches `DELETE FROM users` in psql scheitert weiterhin, und der
+> einzige Weg, der Touren mitnimmt, führt durch die Rückfrage, die ihre Zahl nennt.
+>
+> **In der Oberfläche heißt es „User", nicht „Nutzer."** Rollenwert und Spaltenname
+> bleiben `user` — das ist keine Übersetzung, sondern derselbe Begriff.
+>
+> **Das Passwort braucht vier Zeichen, nicht zehn.** Bewusst niedrig: der Nutzerkreis ist
+> bekannt und klein, Konten legt ausschließlich ein Admin an. Eine Hürde, die dabei nur
+> beim Anlegen nervt, schützt niemanden — sie führt zu notierten Passwörtern. Was den
+> Schutz trägt, steht woanders: scrypt mit ordentlichen Kosten, gleiche Rechenzeit bei
+> unbekanntem Namen, keine Selbstregistrierung. Die Zahl steht in `server/password.ts`,
+> damit Verwaltung und `make db-admin` nicht getrennt darüber entscheiden.
+
 | Prio | Anforderung |
 |---|---|
 | MUSS | **Ohne Anmeldung**: Karte, Planung und Routing benutzbar; kein Speichern, kein Archiv |
 | MUSS | Login mit Benutzername/E-Mail und Passwort; Sitzung bleibt auf dem Handy erhalten |
-| MUSS | Rolle **Admin**: Nutzer anlegen, bearbeiten, deaktivieren, Rolle zuweisen |
-| MUSS | Rolle **Nutzer**: eigene Touren planen, durchführen, archivieren |
+| MUSS | Rolle **Admin**: User anlegen, bearbeiten, deaktivieren, Rolle zuweisen |
+| MUSS | Rolle **Admin**: User **endgültig löschen**, samt seiner Touren — mit Rückfrage, die die Zahl nennt |
+| MUSS | Rolle **User**: eigene Touren planen, durchführen, archivieren |
 | MUSS | Selbstregistrierung abschaltbar (Standard: aus) |
 | SOLL | Passwort ändern; Admin kann Passwort zurücksetzen |
 | SOLL | Jede Tour hat eine klare Eigentümerschaft |
@@ -604,9 +624,9 @@ alle MUSS aus Abschnitt 6.1 und beide SOLL:
 |---|---|
 | Login, Sitzung bleibt erhalten | Sitzungstabelle + httpOnly-Cookie, 90 Tage, gleitend verlängert |
 | Rolle Admin: anlegen, bearbeiten, deaktivieren, Rolle zuweisen | `/verwaltung` |
-| Rolle Nutzer: eigene Touren | `owner_id` filtert wie bisher — nur steht jetzt ein echter Nutzer dahinter |
+| Rolle User: eigene Touren | `owner_id` filtert wie bisher — nur steht jetzt ein echter User dahinter |
 | Selbstregistrierung abschaltbar (Standard: aus) | es gibt keine; Zugänge entstehen nur in der Verwaltung oder über `make db-admin` |
-| SOLL: Passwort ändern / zurücksetzen | in der Verwaltung, beendet alle Sitzungen des Nutzers |
+| SOLL: Passwort ändern / zurücksetzen | in der Verwaltung, beendet alle Sitzungen des Users |
 | SOLL: klare Eigentümerschaft | Fremdschlüssel `tours.owner_id → users.id`, `ON DELETE restrict` |
 
 **Zwei Dinge, die dabei ausdrücklich entschieden wurden.** Passwörter über scrypt aus
@@ -619,12 +639,15 @@ Technik nicht einhält.
 Offen bleibt aus 6.1 nur, was dort als KANN steht: Rolle Gast und das Freigeben einzelner
 Touren an andere Nutzer derselben Instanz.
 
-**Am selben Tag kamen zwei Dinge dazu**, beide als Nachtrag in 6.1 bzw. 7 festgehalten:
+**Am selben Tag kam einiges dazu**, jeweils als Nachtrag in 6.1 bzw. 7 festgehalten:
 
 | | |
 |---|---|
 | **Gastzugang** | Karte, Planung und Routing ohne Konto; Speichern und Archiv nur mit. Dazu eine Begrenzung je IP-Adresse auf den offenen Endpunkten |
 | **Impressum und Datenschutz** | `/impressum` und `/datenschutz`, ohne Anmeldung erreichbar, Betreiberangaben aus `PUBLIC_LEGAL_*`, Entwurfshinweis solange Platzhalter aktiv sind |
+| **User löschen** | endgültig, samt Touren, mit Rückfrage, die deren Zahl nennt |
+| **Navigationsschiene** | einklappbar, links, statt einer Kopfzeile je Seite; die Tourenliste sitzt darin |
+| **Rückfragen im eigenen Dialog** | statt `confirm()` — Verlassen, Tour löschen, User löschen, Abmelden |
 
 ### Was noch aussteht
 

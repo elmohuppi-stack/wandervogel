@@ -16,6 +16,7 @@
 	 */
 	import { page } from '$app/state';
 	import type { SessionUser } from '$lib/server/auth';
+	import ConfirmDialog from './ConfirmDialog.svelte';
 	import Icon from './Icon.svelte';
 	import { schiene } from './sidepanel.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
@@ -49,12 +50,15 @@
 		{ href: '/', label: 'Touren', icon: 'list' },
 		{ href: '/planen', label: 'Neue Tour', icon: 'plus', praefix: true },
 		...(user?.role === 'admin'
-			? [{ href: '/verwaltung', label: 'Nutzer', icon: 'waypoint' } as Eintrag]
+			? [{ href: '/verwaltung', label: 'User', icon: 'waypoint' } as Eintrag]
 			: [])
 	]);
 
 	const aktiv = (e: Eintrag) =>
 		e.praefix ? page.url.pathname.startsWith(e.href) : page.url.pathname === e.href;
+
+	let abmeldenOffen = $state(false);
+	let abmeldeForm: HTMLFormElement | undefined = $state();
 </script>
 
 <nav class="rail" aria-label="Hauptnavigation">
@@ -94,8 +98,14 @@
 				<Icon name="waypoint" size={14} />
 				<span class="wort">{user.displayName}</span>
 			</span>
-			<form method="POST" action="/abmelden">
-				<button type="submit" title="Abmelden">
+			<!--
+				Abmelden fragt nach. Es ist der einzige Knopf in der Schiene, der
+				etwas beendet — und er sitzt direkt neben denen, die nur
+				navigieren. Ein Fehlgriff kostet zwar keine Daten, aber im Planer
+				die begonnene Tour, wenn sie noch nicht gespeichert ist.
+			-->
+			<form method="POST" action="/abmelden" bind:this={abmeldeForm}>
+				<button type="button" title="Abmelden" onclick={() => (abmeldenOffen = true)}>
 					<Icon name="close" size={16} />
 					<span class="wort">Abmelden</span>
 				</button>
@@ -126,6 +136,19 @@
 		</button>
 	</div>
 </nav>
+
+<ConfirmDialog
+	bind:open={abmeldenOffen}
+	title="Abmelden"
+	icon="close"
+	confirmLabel="Abmelden"
+	confirmIcon="check"
+	cancelLabel="Angemeldet bleiben"
+	onConfirm={() => abmeldeForm?.submit()}
+>
+	Die Sitzung wird beendet und auf diesem Gerät zurückgezogen. Zum Weiterarbeiten musst du
+	dich neu anmelden — Karte und Planung bleiben auch ohne Konto benutzbar.
+</ConfirmDialog>
 
 <style>
 	.rail {

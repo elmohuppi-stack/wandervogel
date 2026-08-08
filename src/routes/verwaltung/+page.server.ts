@@ -1,6 +1,13 @@
 import { fail } from '@sveltejs/kit';
 import { toDbError } from '$lib/server/db/errors';
-import { createUser, listUsers, otherActiveAdmins, updateUser } from '$lib/server/db/users';
+import {
+	createUser,
+	deleteUser,
+	listUsers,
+	otherActiveAdmins,
+	updateUser
+} from '$lib/server/db/users';
+import { pruefePasswort } from '$lib/server/password';
 import { pruefeUsername } from '$lib/server/username';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -15,9 +22,6 @@ import type { Actions, PageServerLoad } from './$types';
  * nicht selbst aussperrt. Das ist keine Zugangsfrage, sondern eine Regel
  * über den Datenbestand.
  */
-
-/** Kurz genug ist die häufigste echte Schwäche — Länge schlägt Sonderzeichen. */
-const MIN_PASSWORT = 10;
 
 export const load: PageServerLoad = async ({ locals }) => ({
 	nutzer: await listUsers(),
@@ -36,12 +40,8 @@ export const actions: Actions = {
 		const namensfehler = pruefeUsername(username);
 		if (namensfehler) return fail(400, { fehler: namensfehler, form: 'anlegen' });
 		if (!displayName) return fail(400, { fehler: 'Anzeigename fehlt.', form: 'anlegen' });
-		if (passwort.length < MIN_PASSWORT) {
-			return fail(400, {
-				fehler: `Passwort braucht mindestens ${MIN_PASSWORT} Zeichen.`,
-				form: 'anlegen'
-			});
-		}
+		const passfehler = pruefePasswort(passwort);
+		if (passfehler) return fail(400, { fehler: passfehler, form: 'anlegen' });
 
 		try {
 			await createUser({ username, displayName, password: passwort, role });
@@ -91,7 +91,7 @@ export const actions: Actions = {
 
 		try {
 			const gefunden = await updateUser(id, { displayName, role, active });
-			if (!gefunden) return fail(404, { fehler: 'Diesen Nutzer gibt es nicht mehr.', form: id });
+			if (!gefunden) return fail(404, { fehler: 'Diesen User gibt es nicht mehr.', form: id });
 		} catch (e) {
 			const f = toDbError(e);
 			return fail(503, { fehler: f.message, form: id });
@@ -100,29 +100,65 @@ export const actions: Actions = {
 		return { ok: `„${displayName}" gespeichert.` };
 	},
 
+	/**
+	 * Konto endgültig entfernen, samt seiner Touren.
+	 *
+	 * **Ein Verbot genügt hier, anders als bei `aendern`:** das eigene Konto.
+	 * Eine Aussperrsicherung braucht es nicht — wer löscht, ist selbst ein
+	 * aktiver Admin und bleibt es, weil er sich nicht selbst löschen kann.
+	 * Der letzte Admin lässt sich also gar nicht entfernen. Hier trotzdem
+	 * `otherActiveAdmins` abzufragen wäre eine Prüfung, die nie zutrifft —
+	 * und damit ein Schutz, an den man glaubt, ohne dass er etwas tut.
+	 */
+	loeschen: async ({ request, locals }) => {
+		const d = await request.formData();
+		const id = String(d.get('id') ?? '');
+
+		if (id === locals.user!.id) {
+			return fail(400, {
+				fehler:
+					'Das eigene Konto lässt sich hier nicht löschen — ' +
+					'ein anderer Admin kann es. Zum Verlassen gibt es Abmelden.',
+				form: `del-${id}`
+			});
+		}
+
+		try {
+			const touren = await deleteUser(id);
+			if (touren === null) {
+				return fail(404, { fehler: 'Diesen User gibt es nicht mehr.', form: `del-${id}` });
+			}
+			return {
+				ok:
+					touren > 0
+						? `Konto gelöscht, mit ${touren} ${touren === 1 ? 'Tour' : 'Touren'}.`
+						: 'Konto gelöscht.'
+			};
+		} catch (e) {
+			const f = toDbError(e);
+			return fail(503, { fehler: f.message, form: `del-${id}` });
+		}
+	},
+
 	/** Passwort zurücksetzen (6.1, SOLL). Beendet alle Sitzungen des Nutzers. */
 	passwort: async ({ request }) => {
 		const d = await request.formData();
 		const id = String(d.get('id') ?? '');
 		const passwort = String(d.get('passwort') ?? '');
 
-		if (passwort.length < MIN_PASSWORT) {
-			return fail(400, {
-				fehler: `Passwort braucht mindestens ${MIN_PASSWORT} Zeichen.`,
-				form: `pw-${id}`
-			});
-		}
+		const passfehler = pruefePasswort(passwort);
+		if (passfehler) return fail(400, { fehler: passfehler, form: `pw-${id}` });
 
 		try {
 			const gefunden = await updateUser(id, { password: passwort });
 			if (!gefunden) {
-				return fail(404, { fehler: 'Diesen Nutzer gibt es nicht mehr.', form: `pw-${id}` });
+				return fail(404, { fehler: 'Diesen User gibt es nicht mehr.', form: `pw-${id}` });
 			}
 		} catch (e) {
 			const f = toDbError(e);
 			return fail(503, { fehler: f.message, form: `pw-${id}` });
 		}
 
-		return { ok: 'Passwort gesetzt. Alle offenen Sitzungen dieses Nutzers sind beendet.' };
+		return { ok: 'Passwort gesetzt. Alle offenen Sitzungen dieses Users sind beendet.' };
 	}
 };

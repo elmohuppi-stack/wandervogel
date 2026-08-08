@@ -28,7 +28,18 @@
 	 * Hier ist der Zeitpunkt eindeutig: alte Seite geht, Platz ist leer, neue
 	 * Seite belegt ihn in ihrem eigenen Effekt.
 	 */
-	beforeNavigate(() => {
+	beforeNavigate((nav) => {
+		/*
+		 * Nur bei einem echten Seitenwechsel räumen.
+		 *
+		 * „Touren" anzuklicken, während man schon auf der Tourenliste steht,
+		 * ist auch eine Navigation — aber die Seite bleibt montiert, ihr
+		 * Effekt läuft nicht erneut, und niemand belegt den Platz wieder.
+		 * Die Liste verschwand deshalb beim zweiten Klick auf denselben
+		 * Eintrag. Bei gleicher Route gibt es nichts zu räumen: die Seite,
+		 * der der Inhalt gehört, ist ja noch da.
+		 */
+		if (nav.to?.route.id === nav.from?.route.id) return;
 		schiene.inhalt = null;
 	});
 

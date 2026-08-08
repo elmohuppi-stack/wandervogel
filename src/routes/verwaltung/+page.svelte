@@ -10,6 +10,7 @@
 	import { enhance } from '$app/forms';
 	import Alert from '$lib/ui/Alert.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PasswordField from '$lib/ui/PasswordField.svelte';
 	import Panel from '$lib/ui/Panel.svelte';
@@ -19,22 +20,25 @@
 
 	/** Welche Zeile gerade ihr Passwort ändert. */
 	let pwOffen = $state<string | null>(null);
+	/** Welches Konto gerade zur Löschung ansteht. */
+	let loeschKandidat = $state<PageData['nutzer'][number] | null>(null);
+	let loeschForm: HTMLFormElement | undefined = $state();
 
 	const fehlerVon = (schluessel: string) =>
 		form && 'fehler' in form && form.form === schluessel ? form.fehler : null;
 </script>
 
-<svelte:head><title>Nutzer — Wandervogel</title></svelte:head>
+<svelte:head><title>User — Wandervogel</title></svelte:head>
 
 <main>
-	<h1>Nutzer</h1>
+	<h1>User</h1>
 
 	{#if form && 'ok' in form && form.ok}
 		<Alert tone="ok">{form.ok}</Alert>
 	{/if}
 
 	<Panel>
-		<h2><Icon name="list" size={14} /> Vorhandene Nutzer <span class="zahl">{data.nutzer.length}</span></h2>
+		<h2><Icon name="list" size={14} /> Vorhandene User <span class="zahl">{data.nutzer.length}</span></h2>
 
 		<ul class="liste">
 			{#each data.nutzer as n (n.id)}
@@ -56,7 +60,7 @@
 						<label class="feld schmal">
 							<span>Rolle</span>
 							<select name="role" value={n.role}>
-								<option value="user">Nutzer</option>
+								<option value="user">User</option>
 								<option value="admin">Admin</option>
 							</select>
 						</label>
@@ -75,7 +79,21 @@
 						>
 							Passwort
 						</Button>
+						{#if n.id !== data.selbst}
+							<!-- Das eigene Konto trägt keinen Löschknopf: die Handlung ist
+							     serverseitig verboten, und einen Knopf zu zeigen, der
+							     immer scheitert, ist eine Falle statt einer Tür. -->
+							<Button
+								variant="ghost"
+								size="sm"
+								icon="trash"
+								onclick={() => (loeschKandidat = n)}
+							>
+								Löschen
+							</Button>
+						{/if}
 					</form>
+
 
 					{#if fehlerVon(n.id)}
 						<Alert tone="bad">{fehlerVon(n.id)}</Alert>
@@ -105,13 +123,17 @@
 					{#if fehlerVon(`pw-${n.id}`)}
 						<Alert tone="bad">{fehlerVon(`pw-${n.id}`)}</Alert>
 					{/if}
+
+					{#if fehlerVon(`del-${n.id}`)}
+						<Alert tone="bad">{fehlerVon(`del-${n.id}`)}</Alert>
+					{/if}
 				</li>
 			{/each}
 		</ul>
 	</Panel>
 
 	<Panel>
-		<h2><Icon name="plus" size={14} /> Neuen Nutzer anlegen</h2>
+		<h2><Icon name="plus" size={14} /> Neuen User anlegen</h2>
 		<p class="hinweis">
 			Es gibt keine Selbstregistrierung — Zugänge entstehen ausschließlich hier.
 		</p>
@@ -135,7 +157,7 @@
 			<label class="feld schmal">
 				<span>Rolle</span>
 				<select name="role">
-					<option value="user">Nutzer</option>
+					<option value="user">User</option>
 					<option value="admin">Admin</option>
 				</select>
 			</label>
@@ -143,7 +165,47 @@
 		</form>
 	</Panel>
 
+	<!--
+		Ein Formular für alle Zeilen, außerhalb der Schleife.
+
+		In der Schleife band jede Iteration dasselbe `bind:this` — am Ende
+		zeigte die Referenz auf die letzte Zeile, und ein Klick in Zeile eins
+		hätte den letzten Nutzer gelöscht. Die Kennung kommt deshalb aus dem
+		Dialogzustand, nicht aus der Zeile.
+	-->
+	<form method="POST" action="?/loeschen" class="verborgen" bind:this={loeschForm}>
+		<input type="hidden" name="id" value={loeschKandidat?.id ?? ''} />
+	</form>
 </main>
+
+<ConfirmDialog
+	open={loeschKandidat !== null}
+	title="Konto endgültig löschen"
+	icon="trash"
+	tone="danger"
+	confirmLabel="Endgültig löschen"
+	confirmIcon="trash"
+	onConfirm={() => {
+		loeschForm?.submit();
+		loeschKandidat = null;
+	}}
+	onCancel={() => (loeschKandidat = null)}
+>
+	{#if loeschKandidat}
+		„{loeschKandidat.displayName}" ({loeschKandidat.username}) wird entfernt.
+		{#if loeschKandidat.tourCount > 0}
+			<strong>
+				Die {loeschKandidat.tourCount}
+				{loeschKandidat.tourCount === 1 ? 'gespeicherte Tour' : 'gespeicherten Touren'} dieses
+				Kontos werden mitgelöscht.
+			</strong>
+			Ein GPX-Export vorher wäre die einzige Sicherung.
+		{:else}
+			Dieses Konto hat keine gespeicherten Touren.
+		{/if}
+		Das lässt sich nicht rückgängig machen — zum vorübergehenden Sperren gibt es „aktiv".
+	{/if}
+</ConfirmDialog>
 
 <style>
 	h1 {
@@ -182,6 +244,11 @@
 		margin: calc(-1 * var(--sp-3)) 0 var(--sp-4);
 		font-size: var(--fs-sm);
 		color: var(--ink-3);
+	}
+
+	/* Trägt nur die Kennung für die Formularaktion; gefragt wird im Dialog. */
+	.verborgen {
+		display: none;
 	}
 
 	.liste {

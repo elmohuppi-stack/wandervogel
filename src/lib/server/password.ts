@@ -51,6 +51,30 @@ const MAXMEM = 128 * 1024 * 1024;
 
 const b64 = (b: Buffer) => b.toString('base64url');
 
+/**
+ * Mindestlänge eines Passworts.
+ *
+ * **Vier Zeichen, ausdrücklich niedrig gewählt.** Die üblichen zehn sind
+ * für eine App richtig, die sich an Fremde richtet; diese hier hat einen
+ * bekannten, kleinen Nutzerkreis und legt Konten ausschließlich über einen
+ * Admin an. Eine Hürde, die dabei nur beim Anlegen nervt, schützt niemanden
+ * — sie führt zu notierten Passwörtern.
+ *
+ * Was den Schutz trägt, steht woanders: scrypt mit ordentlichen Kosten,
+ * gleiche Rechenzeit bei unbekanntem Namen, und keine Selbstregistrierung.
+ * Diese Zahl gehört hierher und nicht in die Oberfläche, damit Verwaltung
+ * und `data/admin.mjs` nicht getrennt darüber entscheiden.
+ */
+export const MIN_PASSWORT = 4;
+
+/** Gibt die Fehlermeldung zurück — oder `null`, wenn das Passwort taugt. */
+export function pruefePasswort(pass: string): string | null {
+	if (pass.length < MIN_PASSWORT) {
+		return `Passwort braucht mindestens ${MIN_PASSWORT} Zeichen, angekommen sind ${pass.length}.`;
+	}
+	return null;
+}
+
 export async function hashPassword(password: string): Promise<string> {
 	const salt = randomBytes(16);
 	const key = await scrypt(password.normalize('NFKC'), salt, KEYLEN, {

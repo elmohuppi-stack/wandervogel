@@ -22,9 +22,14 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
   Anmeldung erreichbar
 - **Einklappbare Navigationsschiene** links statt einer Kopfzeile je Seite:
   Marke, Navigation, Konto, Thema und die Rechtsverweise an einer Stelle.
-  Eingeklappt bleiben die Symbole stehen, nur die Wörter gehen
-- **Nutzerverwaltung** für Admins unter `/verwaltung`: anlegen, umbenennen,
-  Rolle setzen, deaktivieren, Passwort zurücksetzen. Keine Selbstregistrierung
+  Eingeklappt bleiben die Symbole stehen, nur die Wörter gehen. Die
+  Tourenliste sitzt darin, nicht daneben — ein linkes Panel, nicht zwei
+- **Rückfragen im eigenen Dialog**, nicht über `confirm()`: Verlassen mit
+  ungespeicherten Änderungen, Tour löschen, User löschen, Abmelden
+- **Userverwaltung** für Admins unter `/verwaltung`: anlegen, umbenennen,
+  Rolle setzen, deaktivieren, Passwort zurücksetzen und **endgültig löschen**
+  — Letzteres nimmt die Touren des Kontos mit, wie die Datenschutzerklärung
+  es zusagt, und fragt vorher mit deren Zahl nach. Keine Selbstregistrierung
 - **Startbildschirm**: Tourenarchiv als Liste *und* Karte, mit Umriss-Vorschau,
   Filter nach Aktivitätsart, Sortierung und Stichwortsuche
 - **Planungsansicht** am Laptop: Karte, Wegpunkte, Route, Kennzahlen, Höhenprofil
@@ -248,6 +253,19 @@ Festgehalten, damit sie nicht zweimal auftreten:
   4985 hm für einen Weg mit rund 3300 hm. Die Messreihe steht in
   [`src/lib/geo/elevation.ts`](src/lib/geo/elevation.ts). Auch geditzt bleibt
   ein Aufschlag — das ist bei jedem Tourenportal so.
+- **`casing: 'snake_case'` in `drizzle.config.ts` gilt nur für drizzle-kit.** Der
+  Abfragebauer zur Laufzeit braucht dieselbe Angabe noch einmal in `drizzle()`,
+  sonst fragt er `"displayName"` gegen eine Spalte `display_name` ab. Fiel erst
+  bei der Anmeldung auf, weil `db/tours.ts` ausschließlich rohes SQL schreibt.
+- **Eine korrelierte Unterabfrage ohne Namen zählt still null.** `sql\`(select
+  count(*) …)\`` läuft ohne Fehler, aber Drizzle findet die Spalte im Ergebnis
+  nicht wieder. Ein Join bildet sauber ab — und ein Falschwert, der plausibel
+  aussieht, ist schlimmer als eine Ausnahme.
+- **Ein Snippet überlebt seine Seite.** Die Tourenliste wird über
+  `ui/sidepanel.svelte.ts` ins Layout durchgereicht. Wird sie beim
+  Seitenwechsel nicht geräumt, greift sie auf die Daten der zerstörten Seite
+  zu. Geräumt wird in `beforeNavigate` — aber **nur bei echtem Routenwechsel**,
+  sonst verschwindet die Liste, wenn man denselben Menüeintrag zweimal klickt.
 - **Web-Mercator braucht beide Achsen im Bogenmaß.** Grad für x und Bogenmaß für y
   streckt x um 180/π; in der Umriss-Vorschau sah damit jede Tour aus wie ein
   waagerechter Strich.
