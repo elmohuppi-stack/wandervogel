@@ -1,10 +1,11 @@
 /**
  * Nutzer lesen und schreiben (Anforderungen 6.1).
  *
- * **Die Regel dieses Moduls:** Der Anmeldename wird ausschließlich hier
- * normalisiert — klein geschrieben und ohne Randleerzeichen. „Elmar" und
- * „elmar" sind derselbe Zugang; das an zwei Stellen zu entscheiden hieße,
- * dass eine davon irgendwann anders entscheidet.
+ * **Die Regel dieses Moduls:** Jeder Schreibweg normalisiert den
+ * Anmeldenamen, und zwar über `../username` — dieselbe Funktion, die
+ * `data/admin.mjs` außerhalb von SvelteKit benutzt. Die Regel an zwei
+ * Stellen zu halten ist genau einmal schiefgegangen: das Skript verbot das
+ * `@` und lehnte damit E-Mail-Adressen ab, die 6.1 ausdrücklich zulässt.
  *
  * Alles, was eine Sitzung ungültig macht (deaktivieren, Rolle ändern,
  * Passwort zurücksetzen), räumt die Sitzungen selbst mit weg. Sonst müsste
@@ -13,8 +14,12 @@
 
 import { and, asc, count, eq, ne } from 'drizzle-orm';
 import { deleteSessionsOfUser, hashPassword } from '../auth';
+import { normalizeUsername } from '../username';
 import { db } from './index';
 import { tours, users, type UserRow } from './schema';
+
+// Weitergereicht, damit Aufrufer nicht zwei Module kennen müssen.
+export { normalizeUsername } from '../username';
 
 export interface UserListItem {
 	id: string;
@@ -25,9 +30,6 @@ export interface UserListItem {
 	tourCount: number;
 	createdAt: string;
 }
-
-/** Kleinschreiben ist keine Kosmetik, sondern die Identität des Kontos. */
-export const normalizeUsername = (s: string) => s.trim().toLowerCase();
 
 export async function listUsers(): Promise<UserListItem[]> {
 	/*

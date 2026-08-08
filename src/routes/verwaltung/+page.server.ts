@@ -1,12 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { toDbError } from '$lib/server/db/errors';
-import {
-	createUser,
-	listUsers,
-	normalizeUsername,
-	otherActiveAdmins,
-	updateUser
-} from '$lib/server/db/users';
+import { createUser, listUsers, otherActiveAdmins, updateUser } from '$lib/server/db/users';
+import { pruefeUsername } from '$lib/server/username';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -24,19 +19,6 @@ import type { Actions, PageServerLoad } from './$types';
 /** Kurz genug ist die häufigste echte Schwäche — Länge schlägt Sonderzeichen. */
 const MIN_PASSWORT = 10;
 
-const MIN_NAME = 3;
-
-function pruefeName(roh: string): string | null {
-	const name = normalizeUsername(roh);
-	if (name.length < MIN_NAME) return `Benutzername braucht mindestens ${MIN_NAME} Zeichen.`;
-	// Keine Leerzeichen und nichts, was in einer URL oder einem Cookie
-	// überrascht — der Name taucht in Meldungen und Verweisen auf.
-	if (!/^[a-z0-9._-]+$/.test(name)) {
-		return 'Benutzername: nur Kleinbuchstaben, Ziffern, Punkt, Strich und Unterstrich.';
-	}
-	return null;
-}
-
 export const load: PageServerLoad = async ({ locals }) => ({
 	nutzer: await listUsers(),
 	selbst: locals.user!.id
@@ -51,7 +33,7 @@ export const actions: Actions = {
 		const passwort = String(d.get('passwort') ?? '');
 		const role = d.get('role') === 'admin' ? 'admin' : 'user';
 
-		const namensfehler = pruefeName(username);
+		const namensfehler = pruefeUsername(username);
 		if (namensfehler) return fail(400, { fehler: namensfehler, form: 'anlegen' });
 		if (!displayName) return fail(400, { fehler: 'Anzeigename fehlt.', form: 'anlegen' });
 		if (passwort.length < MIN_PASSWORT) {
