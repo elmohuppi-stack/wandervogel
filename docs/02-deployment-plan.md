@@ -18,43 +18,47 @@
 
 ---
 
-## Phase 0 — Vier Entscheidungen
+## Phase 0 — Vier Entscheidungen ✅
 
-Keine davon ist Arbeit, alle vier gehören Elmar. Ohne sie fängt nichts an.
+**Alle vier sind am 8. August 2026 gefallen.**
 
-- [ ] **0.1 Portblock 3101/3102.** Wandervogel *und* umweg beanspruchen ihn. Wer
-      zuerst deployt, nimmt ihn; der andere zieht um.
+- [x] **0.1 Portblock: 3101/3102 geht an Wandervogel.** umweg ist auf 3111/3112
+      vorgemerkt und in seiner `CLAUDE.md` umgetragen. Begründung war der Reifegrad,
+      nicht die Vorliebe: Wandervogel hat Dockerfile, Prod-Compose und Healthcheck,
+      umweg steht bei Phase 1 seines eigenen Plans.
       → [ARCHITEKTUR §5](../../optimize-hetzner/ARCHITEKTUR.md#5-portvergabe)
-- [ ] **0.2 Domain.** `wandervogel.elmarhepp.de` wäre naheliegend. Kein DNS-Eintrag
-      nötig — der Wildcard-Record zeigt bereits auf den Server.
-- [ ] **0.3 Der Konflikt mit Anforderungen §7** — siehe unten, der schwierigste Punkt.
-- [ ] **0.4 Speicherbudget** für App und BRouter — siehe Phase 2.6.
+- [x] **0.2 Domain: `wandervogel.elmarhepp.de`.** Kein DNS-Eintrag nötig — der
+      Wildcard-Record zeigt bereits auf den Server, das Zertifikat kommt mit certbot.
+- [x] **0.3 §7 ist scharf gestellt statt gestrichen** — vier Regeln statt eines
+      Verbots. Siehe unten.
+- [x] **0.4 Speicherbudget** steht: App `mem_limit 384m`, BRouter `-Xmx384m` bei
+      `512m`. Gemessen am laufenden Prod-Stack: 18 MiB und 54 MiB.
 
-### 0.3 ausgeschrieben: drei Fremddienste, einer ohne Lösung
+### 0.3 ausgeschrieben: §7 scharf gestellt
 
-Anforderungen §7 verbietet „Fremd-Fair-Use-Dienste im Dauerbetrieb". In der
-Entwicklung benutzt die App drei davon:
+**Der alte Satz lautete: „Keine Fremd-Fair-Use-Dienste im Dauerbetrieb."** Absolut
+formuliert — und konstruktionsbedingt verletzt, weil drei fremde Dienste in Benutzung
+sind und einer davon auf 3,7 GB nicht selbst hostbar ist. Eine Regel, die dauerhaft
+gebrochen ist, wird zu Rauschen.
 
-| | Entwicklung | §7 verlangt | Auf diesem Server |
+**Gestrichen wurde sie ausdrücklich nicht.** Sie ist der Grund, warum BRouter selbst
+läuft, warum `/api/dem` über den eigenen Server geht (und deshalb die IP der Besucher
+nicht zu AWS), warum die Ortssuche gedrosselt und gecacht ist und warum es die
+Begrenzung je IP gibt. Stattdessen stehen jetzt **vier Regeln** in
+[Anforderungen §7](01-anforderungen.md), die nach *wer ruft an* und *wer bezahlt die
+Infrastruktur* unterscheiden.
+
+**Was daraus für die drei Dienste folgt:**
+
+| Dienst | Wer ruft an | Regel | Wann |
 |---|---|---|---|
-| Basiskarte | OpenFreeMap | eigene Protomaps-PMTiles | **machbar**, ein paar GB Platte |
-| Höhendaten | AWS-Terrain über `/api/dem` | lokale PMTiles | **machbar**, dieselbe Rechnung |
-| **Ortssuche** | öffentliches Nominatim | eigene Instanz | **nicht machbar** — der Import braucht ein Vielfaches der 3,7 GB |
+| **Höhendaten** (AWS-Terrain über `/api/dem`) | **der Server**, für jeden Gast | **1** — selbst hosten, sobald machbar | **nächste Nacharbeit nach dem Livegang**, siehe 3.2 |
+| Basiskarte (OpenFreeMap) | der Browser des Besuchers | **2** — unkritisch, der Anbieter bietet es an | später, ohne Frist |
+| Ortssuche (Nominatim) | der Server, aber gedrosselt | **3** — Ausnahme, weil nicht hostbar | bleibt; Auslöser für die Neubewertung stehen in §7 |
 
-Bei der Ortssuche gibt es zwei ehrliche Wege, und beide sind eine Entscheidung,
-keine Bauarbeit:
-
-1. **§7 an dieser Stelle lockern** und es in den Anforderungen dokumentieren. Die
-   Drosselung im eigenen Server ist korrekt gebaut (1100 ms Mindestabstand, Cache
-   über 200 Anfragen), der Betrieb bleibt damit innerhalb der Nutzungsregeln von
-   Nominatim.
-2. **Auf einen eigenen Ortsindex umstellen**, aus einem OSM-Extrakt in eine
-   PostGIS-Tabelle. Deckt „Ort, Gipfel, Hütte, Bahnhof" aus §6.2 ab, kostet den
-   Volltextkomfort von Nominatim.
-
-**Das lässt sich am Deploy-Tag nicht mehr entscheiden.** Seit dem Gastzugang steht
-die Ortssuche außerdem dem offenen Netz offen — die Begrenzung je IP ist gebaut,
-aber die Frage wird dadurch dringender, nicht kleiner.
+**Kein Blocker für den Livegang.** Die Höhendaten sind der einzige Punkt, an dem der
+eigene Server dauerhaft fremde Infrastruktur beansprucht — deshalb stehen sie ganz
+oben auf der Liste danach, aber sie halten den ersten Deploy nicht auf.
 
 ---
 

@@ -191,11 +191,13 @@ Hier steht nur, was diese App eigenbringt:
 
 | | |
 | --- | --- |
-| Portblock | 3101 / 3102 — **noch nicht vergeben**, `umweg` beansprucht denselben |
+| Domain | `wandervogel.elmarhepp.de` — kein DNS-Eintrag nötig, der Wildcard zeigt schon hin |
+| Portblock | **3101 / 3102**, entschieden am 8. August; `umweg` ist auf 3111/3112 vorgemerkt |
 | Datenbank | eigene DB an `pg-shared`, ICU-Kollation `de-DE` |
 | Extension | **PostGIS** — fehlt im gemeinsamen Image, siehe `optimize-hetzner/OFFENE-PROBLEME.md` Punkt 28 |
 | Speicher | siehe Architekturtabelle oben |
-| Ortssuche | eigene Nominatim-Instanz ist auf dem Host **nicht leistbar** (Anforderungen §10) |
+| Ortssuche | öffentliches Nominatim als **benannte Ausnahme** nach [Anforderungen §7](docs/01-anforderungen.md), Regel 3 — eine eigene Instanz braucht ein Vielfaches der 3,7 GB |
+| Nächste Nacharbeit | Höhendaten auf lokale PMTiles: der einzige Dienst, den der **Server** dauerhaft fremd abruft (§7 Regel 1) |
 | Vor dem Livegang | `PUBLIC_LEGAL_*` in `.env` setzen, sonst tragen Impressum und Datenschutz den Entwurfshinweis |
 
 Gebaut wird über [`Dockerfile`](Dockerfile) (drei Stufen, 434 MB) und

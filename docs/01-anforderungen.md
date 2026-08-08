@@ -424,10 +424,52 @@ Touren auf einen Blick besser als ein Foto vom Gipfel.
   offenstehen. Der Nutzerkreis mit Konto ist bekannt und klein, das offene Netz ist es
   nicht — und dahinter liegen der eigene Router auf einem kleinen Server und fremde
   Fair-Use-Dienste. Im Prozessspeicher, ohne zweiten Dienst
-- **Keine Fremd-Fair-Use-Dienste im Dauerbetrieb** — Routing und Geocoding selbst hosten
-  *(die aktuelle Wanderer-Installation nutzt `valhalla1.openstreetmap.de`,
-  `overpass-api.de` und `nominatim.openstreetmap.org`; für Dauerbetrieb nicht zulässig)*
+- **Fremde Dienste nur, wo sie unvermeidbar sind — und dann sichtbar.** Vier Regeln
+  statt eines Verbots, siehe unten
 - Backup der Nutzdaten mit einem Befehl
+
+#### Fremde Dienste — die Regel im Einzelnen
+
+> **Nachtrag 8. August 2026.** Hier stand bis heute: *„Keine Fremd-Fair-Use-Dienste im
+> Dauerbetrieb — Routing und Geocoding selbst hosten."* Der Satz stammt aus dem
+> Vergleich mit Wanderer, das `valhalla1.openstreetmap.de`, `overpass-api.de` und
+> `nominatim.openstreetmap.org` benutzte.
+>
+> **Er war absolut formuliert und wurde konstruktionsbedingt verletzt:** drei fremde
+> Dienste sind in Benutzung, und einer davon lässt sich auf 3,7 GB nicht selbst hosten.
+> Eine Regel, die dauerhaft gebrochen ist, hört auf, eine Regel zu sein — sie wird zu
+> Rauschen, das man beim Lesen überspringt. Deshalb steht sie jetzt präzise da statt
+> absolut. **Gestrichen wurde sie ausdrücklich nicht**, und der Abschnitt darunter sagt,
+> warum.
+
+Zwei Sorgen tragen diese Regel, und sie zeigen **nicht auf denselben Dienst**:
+
+| Sorge | Frage | Zeigt auf |
+|---|---|---|
+| **Verlässlichkeit** | Wer ruft an — der Server dauerhaft, oder der Browser des Besuchers? | Höhendaten (der Server ruft für jeden Gast) |
+| **Fairness** | Wer bezahlt die Infrastruktur — ein Konzern oder eine Spendenkasse? | Ortssuche (Nominatim läuft auf Hardware der OSM Foundation) |
+
+Daraus vier Regeln:
+
+1. **Was der Server dauerhaft abruft, wird selbst gehostet, sobald es auf dieser
+   Maschine machbar ist.** Routing läuft deshalb über eigenes BRouter — die
+   Kernfunktion hängt an niemandem. Höhendaten folgen als benannte Nacharbeit.
+2. **Was der Browser des Besuchers abruft, ist unkritisch**, solange der Anbieter es
+   ausdrücklich anbietet. Die Last verteilt sich, und es entsteht keine Abhängigkeit im
+   Betrieb. Betrifft die Basiskarte.
+3. **Was sich nicht selbst hosten lässt, wird gedrosselt, zwischengespeichert, mit
+   Kennung versehen und in der Datenschutzerklärung namentlich genannt.** Derzeit
+   ausschließlich die Ortssuche: 1100 ms Mindestabstand für *alle* Anfragen zusammen,
+   Cache über 200 Treffer, eigener User-Agent, dazu die Begrenzung je IP für Gäste.
+4. **Auslöser zur Neubewertung**, ausdrücklich benannt: wenn die App über den
+   Bekanntenkreis hinaus benutzt wird, wenn ein Anbieter drosselt oder sich meldet, oder
+   wenn ein Dienst kostenpflichtig wird.
+
+**Was der alte Satz bewirkt hat, bleibt gültig** — er ist der Grund, warum BRouter selbst
+läuft, warum `/api/dem` über den eigenen Server geht (und deshalb die IP der Besucher
+nicht zu AWS), warum die Ortssuche gedrosselt ist und warum es die Begrenzung je IP
+überhaupt gibt. Diese vier Entscheidungen sind sein Ertrag und stehen nicht zur
+Disposition.
 
 ### Daten
 - Alle Tourdaten auf dem eigenen Server
@@ -677,14 +719,18 @@ Impressum und Datenschutzerklärung einen Entwurfshinweis und erfüllen ihren Zw
 
 ## 10. Datenquellen (recherchiert und verifiziert)
 
+Welche dieser Quellen selbst gehostet wird und welche nicht, entscheiden die vier
+Regeln in [§7 „Fremde Dienste"](#fremde-dienste--die-regel-im-einzelnen) — nicht der
+Wunsch, möglichst viel selbst zu betreiben.
+
 | Zweck | Quelle | Anmerkung |
 |---|---|---|
-| Basiskarte (Vektor) | **Protomaps Basemap** als PMTiles | Planet 120 GB, aber `pmtiles extract` holt Tourkorridore, ohne alles zu lagern |
-| Höhe / Profil / Schummerung / Höhenlinien | **Mapterhorn** Terrain-RGB PMTiles | kostenlos, global, Copernicus 30 m; Höhenlinien im Browser berechenbar |
+| Basiskarte (Vektor) | **Protomaps Basemap** als PMTiles | Planet 120 GB, aber `pmtiles extract` holt Tourkorridore. **Regel 2** — bis dahin OpenFreeMap direkt im Browser, das ist unkritisch |
+| Höhe / Profil / Schummerung / Höhenlinien | **Mapterhorn** Terrain-RGB PMTiles | kostenlos, global, Copernicus 30 m; Höhenlinien im Browser berechenbar. **Regel 1** — hier ruft der Server dauerhaft ab, deshalb die nächste Nacharbeit nach dem Livegang |
 | Routing (beide Aktivitätsarten) | **BRouter**, selbst gehostet | Weltsegmente ~7 GB, geringer RAM-Bedarf; Radprofile (`trekking`, `fastbike`, Gravel, MTB) und Wanderprofile (`sac_scale`, `trail_visibility`), höhenbewusst |
 | Wander- und Radrouten, POIs | **OSM** (`route=hiking`, `route=bicycle`) via eigener Extrakt | POIs: Hütte, Wasser, Einkehr, Radladen, Reparaturstation, Bahnhof |
 | Untergrund / Belagsqualität | **OSM** `surface`, `smoothness`, `tracktype` | im eigenen Vektor-Overlay mitführen |
-| Ortssuche | **Nominatim**, selbst gehostet | **auf dem Zielserver nicht leistbar** — ein Nominatim-Import braucht ein Vielfaches der 3,7 GB. Entweder diese Anforderung an dieser Stelle lockern und es dokumentieren, oder auf einen eigenen Ortsindex aus einem OSM-Extrakt umstellen |
+| Ortssuche | **Nominatim**, öffentlicher Dienst | **Ausnahme nach Regel 3** (§7): eine eigene Instanz braucht ein Vielfaches der 3,7 GB. Gedrosselt, gecacht, mit Kennung, in der Datenschutzerklärung genannt. Fällt einer der Auslöser, wird auf einen eigenen Ortsindex aus einem OSM-Extrakt umgestellt |
 | Wetter | **Open-Meteo** (DWD ICON, 2 km) | kostenlos, kein API-Key |
 | Wegmarkierungen | waymarkedtrails Raster (`hiking`, `cycling`) | optionales Overlay, standardmäßig **aus**; liegt über Planer *und* Übersichtskarte; langfristig eigenes Vektor-Overlay |
 | Routensuche (Weg B) | **Waymarked-Trails-API** | benannte Routen im Kartenausschnitt und nach Namen; langfristig eigener OSM-Extrakt |
