@@ -245,9 +245,22 @@ Umgestellt wird über `.env`; die Karte liest ihre Quellen aus
 
 Festgehalten, damit sie nicht zweimal auftreten:
 
-- **`maplibre-gl` muss aus `optimizeDeps` heraus.** Sonst bündelt Vite die Bibliothek vor,
-  ihr Web Worker wird unauffindbar, und die Karte bleibt **völlig leer — ohne jede
-  Fehlermeldung in der Konsole**.
+- **MapLibres Web Worker muss man selbst adressieren** — sonst bleibt die Karte
+  **völlig leer, ohne jede Fehlermeldung in der Konsole**. Der Ausfall kommt zweimal,
+  aus zwei verschiedenen Gründen, und die zweite Hälfte hat die App leer live gehen
+  lassen:
+  - Im Entwicklungsserver bündelt Vite die Bibliothek vor und verliert dabei den
+    Worker. Dagegen steht `maplibre-gl` in `optimizeDeps.exclude`.
+  - Im **gebauten Stand** rechnet sich MapLibre die Adresse aus
+    ``new URL(`./${t}`, import.meta.url)`` zusammen. Die literale Form erkennt Rollup
+    und legt die Datei mit an, die zusammengesetzte nicht — der Bau verweist auf eine
+    Datei, die nie erzeugt wurde. `optimizeDeps` hilft hier gar nichts, es wirkt nur im
+    Entwicklungsserver. Gelöst in `src/lib/map/worker.ts` über `?worker&url` und
+    `setWorkerUrl()`.
+- **Kartenänderungen gegen `pnpm preview` prüfen, nicht gegen `pnpm dev`** — und zwar
+  im Browser, nicht auf HTTP-Statuscodes. Der Worker-Ausfall oben war live an genau
+  einer 404-Zeile zu erkennen; alle Seiten antworteten brav mit 200, der Healthcheck
+  war grün, und die Karte war trotzdem weg.
 - **`raster-dem` braucht `tiles: [...]`, nicht `url:`.** `url` erwartet ein
   TileJSON-Dokument und fordert `dem-shared://{z}/{x}/{y}` wörtlich an. Das Relief
   bleibt dann still aus.
