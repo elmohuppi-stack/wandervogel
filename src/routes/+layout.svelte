@@ -2,8 +2,10 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { browser } from '$app/environment';
+	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import SideNav from '$lib/ui/SideNav.svelte';
+	import { schiene } from '$lib/ui/sidepanel.svelte';
 	import { theme } from '$lib/ui/theme.svelte';
 	import type { LayoutData } from './$types';
 
@@ -12,6 +14,23 @@
 	// Das Attribut steht schon (Inline-Skript in app.html); hier wird nur der
 	// Zustand daran angehängt und auf Systemwechsel gehört.
 	$effect(() => theme.init());
+
+	/*
+	 * Den Platz vor jedem Seitenwechsel räumen.
+	 *
+	 * Die Aufräumfunktion aus `belegeSchiene` allein genügte nicht: sie
+	 * vergleicht die Identität des Snippets, und die wechselt, wenn die Seite
+	 * neu rendert — dann räumt sie nichts mehr. Sichtbar wurde das als
+	 * „Cannot read properties of undefined (reading 'activityType')": die
+	 * Tourenliste stand nach dem Wechsel auf /planen und /verwaltung weiter
+	 * in der Schiene und griff auf die Daten ihrer längst zerstörten Seite zu.
+	 *
+	 * Hier ist der Zeitpunkt eindeutig: alte Seite geht, Platz ist leer, neue
+	 * Seite belegt ihn in ihrem eigenen Effekt.
+	 */
+	beforeNavigate(() => {
+		schiene.inhalt = null;
+	});
 
 	/**
 	 * Seiten ohne Schiene.

@@ -17,6 +17,7 @@
 	import { page } from '$app/state';
 	import type { SessionUser } from '$lib/server/auth';
 	import Icon from './Icon.svelte';
+	import { schiene } from './sidepanel.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import type { IconName } from './icons';
 
@@ -77,6 +78,14 @@
 		{/each}
 	</ul>
 
+	<!--
+		Der Platz der Seite. Die Startseite hängt hier ihre Tourenliste ein;
+		Planer und Verwaltung lassen ihn leer und die Schiene bleibt schmal.
+	-->
+	{#if schiene.inhalt}
+		<div class="seitenteil">{@render schiene.inhalt()}</div>
+	{/if}
+
 	<div class="unten">
 		<ThemeToggle size="sm" />
 
@@ -120,7 +129,6 @@
 
 <style>
 	.rail {
-		grid-row: 1 / -1;
 		display: flex;
 		flex-direction: column;
 		gap: var(--sp-2);
@@ -130,6 +138,25 @@
 		border-right: 1px solid var(--edge);
 		overflow: hidden;
 		transition: width var(--dur-1) var(--ease);
+	}
+
+	/* Trägt die Schiene den Inhalt einer Seite, braucht sie Listenbreite —
+	   sonst müsste die Tourenkarte auf 12,5 rem lesbar sein. */
+	.rail:has(.seitenteil) {
+		width: var(--list-w);
+	}
+
+	.seitenteil {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		margin: var(--sp-3) calc(-1 * var(--sp-3)) 0;
+		border-top: 1px solid var(--edge-soft);
+	}
+
+	:global(html[data-nav='schmal']) .seitenteil {
+		display: none;
 	}
 
 	:global(html[data-nav='schmal']) .rail {
@@ -181,6 +208,7 @@
 
 	.unten {
 		margin-top: auto;
+		border-top: 1px solid var(--edge-soft);
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;

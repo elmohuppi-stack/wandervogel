@@ -1,6 +1,11 @@
 <script lang="ts">
 	/**
-	 * Eine Tour in der Liste: Umriss, Aktivitätsart, Datum, Name, drei Zahlen.
+		 * Eine Tour in der Liste: Umriss, Aktivitätsart, Datum, Name, drei Zahlen.
+	 *
+	 * Die Klasse heißt `tourkarte` und nicht `karte`: Letzteres trägt auf der
+	 * Startseite die Kartenfläche. Solange die Kachel im DOM davor stand, fiel
+	 * die Doppelung nicht auf — nach dem Umzug der Liste in die Schiene traf
+	 * ein `.karte`-Selektor plötzlich die Landkarte.
 	 *
 	 * Die ganze Karte ist ein Link und enthält deshalb keinen Knopf — ein
 	 * Formular in einem <a> wäre ungültiges HTML. Gelöscht wird in der
@@ -27,7 +32,7 @@
 </script>
 
 <a
-	class="karte"
+	class="tourkarte"
 	class:active
 	href="/planen/{tour.id}"
 	style="--route: var({def.colorVar})"
@@ -69,7 +74,7 @@
 </a>
 
 <style>
-	.karte {
+	.tourkarte {
 		display: flex;
 		gap: var(--sp-5);
 		padding: var(--sp-5);
@@ -83,8 +88,8 @@
 			box-shadow var(--dur-1) var(--ease);
 	}
 
-	.karte:hover,
-	.karte.active {
+	.tourkarte:hover,
+	.tourkarte.active {
 		border-color: var(--route);
 		box-shadow: var(--el-1);
 	}

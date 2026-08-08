@@ -25,6 +25,7 @@
 	import IconButton from '$lib/ui/IconButton.svelte';
 	import MapTools from '$lib/ui/MapTools.svelte';
 	import PlaceSearch from '$lib/ui/PlaceSearch.svelte';
+	import { belegeSchiene } from '$lib/ui/sidepanel.svelte';
 	import TourCard from './TourCard.svelte';
 	import type { PageData } from './$types';
 
@@ -88,6 +89,9 @@
 		sucheTimer = setTimeout(() => setze({ q: v || null }), 300);
 	}
 
+	// Die Liste in die Schiene hängen und beim Verlassen wieder freigeben.
+	$effect(() => belegeSchiene(listenteil));
+
 	// Linie überfahren → die zugehörige Karte in den Blick holen.
 	$effect(() => {
 		if (!hoveredId || !liste) return;
@@ -99,8 +103,14 @@
 
 <svelte:head><title>Touren — Wandervogel</title></svelte:head>
 
-<div class="app">
-	<aside class="liste">
+<!--
+	Die Tourenliste lebt in der Navigationsschiene, nicht daneben.
+
+	Vorher standen links zwei Panels: die Schiene und diese Liste — für einen
+	Gast war die zweite fast leer. Das Snippet wird über `belegeSchiene` an
+	das Layout durchgereicht; die Seite selbst hält nur noch die Karte.
+-->
+{#snippet listenteil()}
 		{#if data.user}
 		<div class="filter">
 			<label class="suchfeld">
@@ -199,8 +209,9 @@
 				</EmptyState>
 			{/if}
 		</div>
-	</aside>
+{/snippet}
 
+<div class="app">
 	<main class="karte">
 		<TourOverviewMap
 			bind:this={mapRef}
@@ -275,18 +286,11 @@
 	   hier bleiben Liste und Karte. */
 	.app {
 		display: grid;
-		grid-template-columns: var(--list-w) 1fr;
 		height: 100%;
 		overflow: hidden;
 	}
 
-	.liste {
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
-		background: var(--paper);
-		border-right: 1px solid var(--edge);
-	}
+	/* Kein eigener Rahmen mehr: die Schiene ist der Rahmen. */
 
 	.filter {
 		display: grid;
@@ -393,18 +397,7 @@
 		box-shadow: var(--el-2);
 	}
 
-	@media (max-width: 900px) {
-		.app {
-			grid-template-columns: 1fr;
-			grid-template-rows: var(--topbar-h) minmax(0, 40vh) 1fr;
-		}
-		.liste {
-			grid-row: 3;
-			border-right: 0;
-			border-top: 1px solid var(--edge);
-		}
-		.karte {
-			grid-row: 2;
-		}
-	}
+	/* Die schmale Breite regelt jetzt die Schiene: sie klappt ein, und die
+	   Karte bekommt die Fläche. Ein eigenes Umbruch-Raster hier wäre eine
+	   zweite Meinung zum selben Platz. */
 </style>
