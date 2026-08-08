@@ -179,7 +179,11 @@ Ausführlich in [Anforderungen §7](docs/01-anforderungen.md); hier das Nötigst
 
 ## Deployment
 
-Der Weg läuft nach **[`optimize-hetzner/NEUE-APP.md`](../optimize-hetzner/NEUE-APP.md)** —
+Der konkrete Weg zum ersten Deploy steht als abzuarbeitende Liste in
+**[docs/02-deployment-plan.md](docs/02-deployment-plan.md)** — samt der beiden
+Entscheidungen, die vorher fallen müssen. Die Datei wird nach dem Livegang gelöscht.
+
+Der allgemeine Ablauf läuft nach **[`optimize-hetzner/NEUE-APP.md`](../optimize-hetzner/NEUE-APP.md)** —
 Portvergabe, Datenbank an `pg-shared`, Compose-Skelett, Rechtsseiten, Reihenfolge der
 Live-Schaltung und die Checkliste stehen dort und gelten für alle Apps auf dem Host.
 
