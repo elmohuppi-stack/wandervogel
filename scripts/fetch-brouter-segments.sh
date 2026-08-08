@@ -6,6 +6,8 @@
 # 170–240 MB groß, weltweit sind es zusammen etwa 7 GB. Für den Anfang
 # genügt das Feld, in dem man wandert.
 #
+# Läuft mit reinem bash und curl — auch auf dem Server, wo es kein pnpm gibt.
+#
 #   ./scripts/fetch-brouter-segments.sh              # Standard: Deutschland
 #   ./scripts/fetch-brouter-segments.sh E5_N45       # nur Pfalz/Südwest
 #   ./scripts/fetch-brouter-segments.sh --alps       # Alpenraum dazu
@@ -74,5 +76,6 @@ done
 
 echo
 echo "Insgesamt ${total_mb} MB in $DEST"
-echo "Jetzt neu starten, damit BRouter die Segmente einliest:"
-echo "  docker compose restart brouter"
+echo "Neue Segmente greifen erst nach einem Neustart des Routers:"
+echo "  make brouter-restart                                        (Entwicklung)"
+echo "  docker compose -f docker-compose.prod.yml restart brouter   (Server)"

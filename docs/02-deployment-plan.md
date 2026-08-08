@@ -160,9 +160,12 @@ Phase 1.1.
 
 ## Phase 3 — Daten auf den Server
 
-- [ ] **3.1 BRouter-Segmente.** Lokal liegt genau ein Feld (`E5_N45`, 239 MB) — deshalb
-      scheitert Routing außerhalb Südwestdeutschlands. Für den Betrieb: Deutschland
-      ~800 MB, oder gezielt die Felder der eigenen Reviere. Von 49 GB frei kein Thema.
+- [x] **3.1 BRouter-Segmente** — Deutschland vollständig auf dem Server:
+      `E5_N45`, `E5_N50`, `E10_N45`, `E10_N50`, zusammen **720 MB** unter
+      `/var/www/wandervogel/data/brouter/segments4`. Jede Datei gegen die
+      `Content-Length` der Quelle geprüft, keine `.part`-Reste. Platte danach
+      48 GB frei. Die Zugspitze (`E10_N45`) ist damit abgedeckt — das Feld, das
+      lokal fehlte
 - [ ] **3.2 Kartenkacheln**, falls Entscheidung 0.3 auf „selbst hosten" fällt:
       Protomaps-Extrakt und Mapterhorn-Terrain als PMTiles, per nginx mit
       Range-Requests. Kostet Platte, praktisch keinen RAM.
