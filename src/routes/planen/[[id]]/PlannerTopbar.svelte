@@ -9,9 +9,7 @@
 	import { ACTIVITY_TYPES, activity, type ActivityType } from '$lib/geo/activity';
 	import Button from '$lib/ui/Button.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
-	import LegalLinks from '$lib/ui/LegalLinks.svelte';
 	import SegmentedControl, { type Segment } from '$lib/ui/SegmentedControl.svelte';
-	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
 
 	interface Props {
 		name: string;
@@ -65,9 +63,13 @@
 	});
 </script>
 
+<!--
+	Was hier steht, gehört zur *Tour* — Name, Aktivitätsart, Zustand,
+	Speichern. Navigation, Thema und Rechtsverweise sind mit dem Umbau am
+	8. August 2026 in die Schiene gewandert; die Kopfzeile ist deshalb keine
+	Navigationsleiste mehr, sondern die Werkzeugzeile dieser einen Tour.
+-->
 <header class="topbar">
-	<Button variant="ghost" size="sm" icon="chevron-left" href="/">Touren</Button>
-
 	<!--
 		Ein <label> und kein <div>: der Stift ist damit Teil der Trefffläche
 		und fokussiert das Feld, statt nur danebenzustehen.
@@ -99,9 +101,6 @@
 			Route wird berechnet …
 		{/if}
 	</span>
-
-	<LegalLinks />
-	<ThemeToggle size="sm" />
 
 	<Button
 		variant={fertig ? 'quiet' : 'primary'}

@@ -694,7 +694,7 @@
 		display: grid;
 		grid-template-columns: 1fr var(--rail-w);
 		grid-template-rows: var(--topbar-h) 1fr auto;
-		height: 100dvh;
+		height: 100%;
 		overflow: hidden;
 	}
 

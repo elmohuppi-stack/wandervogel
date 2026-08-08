@@ -11,9 +11,8 @@
 	import Alert from '$lib/ui/Alert.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
-	import LegalLinks from '$lib/ui/LegalLinks.svelte';
+	import PasswordField from '$lib/ui/PasswordField.svelte';
 	import Panel from '$lib/ui/Panel.svelte';
-	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -27,18 +26,9 @@
 
 <svelte:head><title>Nutzer — Wandervogel</title></svelte:head>
 
-<header>
-	<Button variant="ghost" size="sm" icon="chevron-left" href="/">Touren</Button>
-	<h1>Nutzer</h1>
-	<span class="spacer"></span>
-	<LegalLinks />
-	<ThemeToggle size="sm" />
-	<form method="POST" action="/abmelden">
-		<Button type="submit" variant="ghost" size="sm" icon="close">Abmelden</Button>
-	</form>
-</header>
-
 <main>
+	<h1>Nutzer</h1>
+
 	{#if form && 'ok' in form && form.ok}
 		<Alert tone="ok">{form.ok}</Alert>
 	{/if}
@@ -97,10 +87,14 @@
 							pwOffen = null;
 						}}>
 							<input type="hidden" name="id" value={n.id} />
-							<label class="feld">
-								<span>Neues Passwort für {n.displayName}</span>
-								<input name="passwort" type="password" autocomplete="new-password" required />
-							</label>
+							<div class="feld">
+								<PasswordField
+									name="passwort"
+									label="Neues Passwort für {n.displayName}"
+									autocomplete="new-password"
+									required
+								/>
+							</div>
 							<Button type="submit" variant="primary" size="sm" icon="check">Setzen</Button>
 							<Button variant="ghost" size="sm" icon="close" onclick={() => (pwOffen = null)}>
 								Abbrechen
@@ -135,10 +129,9 @@
 				<span>Anzeigename</span>
 				<input name="displayName" required />
 			</label>
-			<label class="feld">
-				<span>Passwort</span>
-				<input name="passwort" type="password" autocomplete="new-password" required />
-			</label>
+			<div class="feld">
+				<PasswordField name="passwort" label="Passwort" autocomplete="new-password" required />
+			</div>
 			<label class="feld schmal">
 				<span>Rolle</span>
 				<select name="role">
@@ -149,27 +142,14 @@
 			<Button type="submit" variant="primary" size="sm" icon="plus">Anlegen</Button>
 		</form>
 	</Panel>
+
 </main>
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		gap: var(--sp-4);
-		padding: 0 var(--sp-4);
-		height: 3rem;
-		background: var(--surface);
-		border-bottom: 1px solid var(--edge);
-	}
-
 	h1 {
-		margin: 0;
-		font-size: var(--fs-base);
+		margin: 0 0 var(--sp-2);
+		font-size: var(--fs-lg);
 		font-weight: 600;
-	}
-
-	.spacer {
-		flex: 1;
 	}
 
 	main {
@@ -177,8 +157,10 @@
 		flex-direction: column;
 		gap: var(--sp-5);
 		max-width: 60rem;
+		height: 100%;
 		margin: 0 auto;
 		padding: var(--sp-5);
+		overflow-y: auto;
 	}
 
 	h2 {

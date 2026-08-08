@@ -9,6 +9,7 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import LegalLinks from '$lib/ui/LegalLinks.svelte';
+	import PasswordField from '$lib/ui/PasswordField.svelte';
 	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
 	import type { ActionData, PageData } from './$types';
 
@@ -55,10 +56,7 @@
 			/>
 		</label>
 
-		<label>
-			<span>Passwort</span>
-			<input name="passwort" type="password" autocomplete="current-password" required />
-		</label>
+		<PasswordField name="passwort" label="Passwort" autocomplete="current-password" required />
 
 		<input type="hidden" name="weiter" value={data.weiter} />
 

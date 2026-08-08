@@ -209,10 +209,32 @@ db-studio: env node_modules services ## Tabellen im Browser ansehen
 # laut Anforderungen 6.1 nicht. Auf einen vorhandenen Namen angewandt setzt
 # der Aufruf dessen Passwort zurück — die Notbremse, wenn niemand mehr
 # hineinkommt.
-db-admin: env node_modules services ## Admin anlegen oder Passwort setzen: NAME=… PASS=…
-	@[ -n "$(NAME)" ] && [ -n "$(PASS)" ] || \
-		{ echo 'Aufruf: make db-admin NAME=… PASS=… [ANZEIGE="…"]'; exit 1; }
+db-admin: env node_modules services ## Admin anlegen oder Passwort zurücksetzen: NAME= PASS= ANZEIGE=
+	@[ -n "$(NAME)" ] && [ -n "$(PASS)" ] || { $(MAKE) --no-print-directory db-admin-hilfe; exit 1; }
 	@$(DB_ENV) NAME='$(NAME)' PASS='$(PASS)' ANZEIGE='$(ANZEIGE)' node data/admin.mjs
+
+# Ohne eckige Klammern.
+#
+# Vorher stand hier `[ANZEIGE="…"]` — die übliche Schreibweise für „optional"
+# aus Handbuchseiten. Wer die Zeile kopiert, bekommt in zsh aber
+# `no matches found: [ANZEIGE=…]`: dort ist `[…]` ein Dateimuster. Eine
+# Gebrauchsanweisung, die beim Kopieren scheitert, ist keine.
+.PHONY: db-admin-hilfe
+db-admin-hilfe:
+	@echo 'make db-admin — den ersten Zugang anlegen oder ein Passwort zurücksetzen.'
+	@echo ''
+	@echo '  NAME     Anmeldename. Mindestens 3 Zeichen aus a-z 0-9 . _ - + @'
+	@echo '           Eine E-Mail-Adresse ist damit ein gültiger Name.'
+	@echo '  PASS     Passwort, mindestens 10 Zeichen. In Anführungszeichen'
+	@echo '           setzen, sonst frisst die Shell $$ ! und Leerzeichen.'
+	@echo '  ANZEIGE  Anzeigename, wie er in der App steht. Optional;'
+	@echo '           ohne Angabe wird NAME genommen.'
+	@echo ''
+	@echo '  make db-admin NAME=elmar PASS='"'"'geheim-und-lang'"'"''
+	@echo '  make db-admin NAME=elmar.hepp@example.com PASS='"'"'geheim-und-lang'"'"' ANZEIGE='"'"'Elmar Hepp'"'"''
+	@echo ''
+	@echo '  Auf einen vorhandenen Namen angewandt setzt der Aufruf dessen'
+	@echo '  Passwort zurück und beendet alle offenen Sitzungen.'
 
 # Erfüllt die Anforderung „Backup der Nutzdaten mit einem Befehl".
 db-dump: env services ## Nutzdaten sichern nach data/backup/

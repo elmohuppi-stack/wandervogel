@@ -23,11 +23,8 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import IconButton from '$lib/ui/IconButton.svelte';
-	import LegalLinks from '$lib/ui/LegalLinks.svelte';
 	import MapTools from '$lib/ui/MapTools.svelte';
 	import PlaceSearch from '$lib/ui/PlaceSearch.svelte';
-	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
-	import UserMenu from '$lib/ui/UserMenu.svelte';
 	import TourCard from './TourCard.svelte';
 	import type { PageData } from './$types';
 
@@ -103,21 +100,6 @@
 <svelte:head><title>Touren — Wandervogel</title></svelte:head>
 
 <div class="app">
-	<header class="topbar">
-		<Icon name="list" size={16} />
-		<h1>Touren</h1>
-		{#if data.user}<span class="anzahl num">{data.tours.length}</span>{/if}
-		<span class="spacer"></span>
-		<LegalLinks />
-		{#if data.user}
-			<UserMenu user={data.user} />
-		{:else}
-			<Button variant="ghost" size="sm" icon="check" href="/anmelden">Anmelden</Button>
-		{/if}
-		<ThemeToggle size="sm" />
-		<Button variant="primary" size="sm" icon="plus" href="/planen">Neue Tour</Button>
-	</header>
-
 	<aside class="liste">
 		{#if data.user}
 		<div class="filter">
@@ -289,39 +271,13 @@
 </div>
 
 <style>
+	/* Ohne Kopfzeile: die Schiene im Layout darüber trägt die Navigation,
+	   hier bleiben Liste und Karte. */
 	.app {
 		display: grid;
 		grid-template-columns: var(--list-w) 1fr;
-		grid-template-rows: var(--topbar-h) 1fr;
-		height: 100dvh;
+		height: 100%;
 		overflow: hidden;
-	}
-
-	.topbar {
-		grid-column: 1 / -1;
-		display: flex;
-		align-items: center;
-		gap: var(--sp-4);
-		padding: 0 var(--sp-5);
-		background: var(--surface);
-		border-bottom: 1px solid var(--edge);
-		color: var(--ink-3);
-		z-index: var(--z-topbar);
-	}
-
-	h1 {
-		margin: 0;
-		font-size: var(--fs-base);
-		font-weight: 600;
-		color: var(--ink);
-	}
-
-	.anzahl {
-		font-size: var(--fs-xs);
-	}
-
-	.spacer {
-		flex: 1;
 	}
 
 	.liste {

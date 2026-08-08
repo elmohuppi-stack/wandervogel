@@ -20,6 +20,9 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 - **Begrenzung je IP** auf allen Endpunkten, die ohne Konto offenstehen
 - **Impressum und Datenschutz** unter `/impressum` und `/datenschutz`, ohne
   Anmeldung erreichbar
+- **Einklappbare Navigationsschiene** links statt einer Kopfzeile je Seite:
+  Marke, Navigation, Konto, Thema und die Rechtsverweise an einer Stelle.
+  Eingeklappt bleiben die Symbole stehen, nur die Wörter gehen
 - **Nutzerverwaltung** für Admins unter `/verwaltung`: anlegen, umbenennen,
   Rolle setzen, deaktivieren, Passwort zurücksetzen. Keine Selbstregistrierung
 - **Startbildschirm**: Tourenarchiv als Liste *und* Karte, mit Umriss-Vorschau,
@@ -103,7 +106,7 @@ Nach dem Nachladen von Segmenten: `docker compose restart brouter`.
 | `make logs` | Docker-Logs folgen |
 | `make segments ARGS=E5_N45` | BRouter-Segmente laden |
 | `make db-migrate` / `db-generate` | Schema anwenden, Migration erzeugen |
-| `make db-admin NAME=… PASS=… [ANZEIGE=…]` | Admin anlegen oder sein Passwort zurücksetzen |
+| `make db-admin NAME=… PASS=…` | Admin anlegen oder sein Passwort zurücksetzen; `ANZEIGE=…` optional. `make db-admin` allein erklärt die Werte |
 | `make db-studio` | Tabellen im Browser ansehen |
 | `make db-dump` / `db-restore FILE=…` | Nutzdaten sichern und zurückspielen |
 | `make clean` | Build-Artefakte entfernen |

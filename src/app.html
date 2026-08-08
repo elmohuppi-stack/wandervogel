@@ -15,9 +15,14 @@
 				var t = localStorage.getItem('wv.theme');
 				document.documentElement.dataset.theme =
 					t === 'dark' || t === 'system' ? t : 'light';
+				// Aus demselben Grund wie das Thema: die Schiene darf beim Laden
+				// nicht erst breit stehen und dann zusammenschnappen.
+				document.documentElement.dataset.nav =
+					localStorage.getItem('wv.nav') === 'schmal' ? 'schmal' : 'weit';
 			} catch (e) {
-				// Privater Modus oder gesperrter Speicher: hell ist die Vorgabe.
+				// Privater Modus oder gesperrter Speicher: die Vorgaben.
 				document.documentElement.dataset.theme = 'light';
+				document.documentElement.dataset.nav = 'weit';
 			}
 		</script>
 		%sveltekit.head%
