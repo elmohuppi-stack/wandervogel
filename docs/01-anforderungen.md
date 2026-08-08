@@ -616,8 +616,8 @@ Ortssuche über Nominatim · eigener Standort auf beiden Karten · markiertes We
 einblendbares Overlay · Weg B (OSM-Relation übernehmen) · Weg C (GPX-Import).
 
 **Anmeldung und Rollen** standen als Erstes auf dieser Liste, wurden übersprungen und sind
-am 8. August 2026 nachgeholt worden — sie waren der Blocker vor jedem Deploy
-([02-deployment-befund.md](02-deployment-befund.md), Abschnitt 4). Umgesetzt sind damit
+am 8. August 2026 nachgeholt worden — sie waren der Blocker vor jedem Deploy.
+Umgesetzt sind damit
 alle MUSS aus Abschnitt 6.1 und beide SOLL:
 
 | 6.1 verlangt | Umgesetzt als |
@@ -684,7 +684,7 @@ Impressum und Datenschutzerklärung einen Entwurfshinweis und erfüllen ihren Zw
 | Routing (beide Aktivitätsarten) | **BRouter**, selbst gehostet | Weltsegmente ~7 GB, geringer RAM-Bedarf; Radprofile (`trekking`, `fastbike`, Gravel, MTB) und Wanderprofile (`sac_scale`, `trail_visibility`), höhenbewusst |
 | Wander- und Radrouten, POIs | **OSM** (`route=hiking`, `route=bicycle`) via eigener Extrakt | POIs: Hütte, Wasser, Einkehr, Radladen, Reparaturstation, Bahnhof |
 | Untergrund / Belagsqualität | **OSM** `surface`, `smoothness`, `tracktype` | im eigenen Vektor-Overlay mitführen |
-| Ortssuche | **Nominatim**, selbst gehostet | auf dem heutigen Host nicht leistbar — siehe [02-deployment-befund.md](02-deployment-befund.md) §7 |
+| Ortssuche | **Nominatim**, selbst gehostet | **auf dem Zielserver nicht leistbar** — ein Nominatim-Import braucht ein Vielfaches der 3,7 GB. Entweder diese Anforderung an dieser Stelle lockern und es dokumentieren, oder auf einen eigenen Ortsindex aus einem OSM-Extrakt umstellen |
 | Wetter | **Open-Meteo** (DWD ICON, 2 km) | kostenlos, kein API-Key |
 | Wegmarkierungen | waymarkedtrails Raster (`hiking`, `cycling`) | optionales Overlay, standardmäßig **aus**; liegt über Planer *und* Übersichtskarte; langfristig eigenes Vektor-Overlay |
 | Routensuche (Weg B) | **Waymarked-Trails-API** | benannte Routen im Kartenausschnitt und nach Namen; langfristig eigener OSM-Extrakt |

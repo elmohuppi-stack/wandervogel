@@ -14,6 +14,16 @@
 
 SHELL := /bin/bash
 
+# Die Dienstedatei heißt ausdrücklich `dev`.
+#
+# Sie enthält einen eigenen Postgres — richtig zum Entwickeln, falsch auf dem
+# Server, wo `pg-shared` die Datenbank stellt. Hieße sie `docker-compose.yml`,
+# genügte ein `docker compose up -d` im ausgecheckten Verzeichnis, um dort
+# einen zweiten Postgres zu starten: er beschädigte nichts, kostete aber
+# Speicher, und die App schriebe still in die falsche, leere Datenbank.
+# Unter diesem Namen findet ein blanker Aufruf schlicht nichts.
+COMPOSE := docker compose -f docker-compose.dev.yml
+
 APP_PORT     ?= 5180
 PREVIEW_PORT ?= 3000
 
@@ -27,7 +37,7 @@ APP_LOG  := $(RUN_DIR)/app.log
 .PHONY: help env services start dev stop restart status logs \
         check build preview segments \
         db-generate db-migrate db-studio db-admin db-dump db-restore \
-        clean kill-own
+        clean kill-own brouter-restart
 
 ## ----------------------------------------------------------------- Übersicht
 
@@ -45,7 +55,7 @@ help:
 $(RUN_DIR):
 	@mkdir -p $(RUN_DIR)
 
-# .env wird von docker compose gelesen; ohne POSTGRES_PASSWORD startet die
+# .env wird von Compose gelesen; ohne POSTGRES_PASSWORD startet die
 # Datenbank nicht. Deshalb hier prüfen statt später im Container scheitern.
 env:
 	@if [ ! -f .env ]; then \
@@ -64,7 +74,7 @@ node_modules: package.json pnpm-lock.yaml
 # Kein `services-stop`: `make stop` fährt die Dienste mit herunter, und zwei
 # Wege zum selben Ziel sind einer zu viel.
 services: env
-	docker compose up -d
+	$(COMPOSE) up -d
 	@echo 'Warte auf die Datenbank …'
 	@until [ "$$(docker inspect -f '{{.State.Health.Status}}' wv-db 2>/dev/null)" = healthy ]; do \
 		sleep 1; \
@@ -98,14 +108,14 @@ dev: node_modules services ## Entwicklungsserver im Vordergrund, Strg-C beendet
 stop: ## Beide Server und die Docker-Dienste anhalten
 	@$(MAKE) --no-print-directory kill-own PIDFILE=$(DEV_PID) PORT=$(APP_PORT) WHAT='Entwicklungsserver'
 	@$(MAKE) --no-print-directory kill-own PIDFILE=$(APP_PID) PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
-	docker compose down
+	$(COMPOSE) down
 
 restart: stop start ## stop, dann start
 
 status: ## Läuft was?
 	@$(MAKE) --no-print-directory status-one PIDFILE=$(DEV_PID) PORT=$(APP_PORT) WHAT='Entwicklungsserver'
 	@$(MAKE) --no-print-directory status-one PIDFILE=$(APP_PID) PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
-	@docker compose ps
+	@$(COMPOSE) ps
 
 # Dieselbe Unterscheidung wie in kill-own, und aus demselben Grund.
 #
@@ -126,7 +136,7 @@ status-one:
 	fi
 
 logs: ## Docker-Logs folgen
-	docker compose logs -f
+	$(COMPOSE) logs -f
 
 # Beendet nur, was dieses Makefile selbst gestartet hat.
 #
@@ -257,7 +267,11 @@ db-restore: env services ## Sicherung zurückspielen: FILE=…
 #   make segments ARGS=--alps
 segments: ## BRouter-Segmente laden, z. B. ARGS=E5_N45
 	pnpm segments $(ARGS)
-	@echo 'Nach neuen Segmenten: docker compose restart brouter'
+	@echo 'Neue Segmente sind erst nach einem Neustart des Routers sichtbar:'
+	@echo '  make brouter-restart'
+
+brouter-restart: env ## BRouter neu starten, damit neue Segmente greifen
+	$(COMPOSE) restart brouter
 
 # Laufzeitdaten unter data/ bleiben unangetastet — dort liegen Datenbank und
 # die großen BRouter-Segmente. Für einen wirklich frischen Stand zusätzlich

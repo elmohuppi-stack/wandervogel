@@ -96,7 +96,7 @@ pnpm segments E5_N45        # Pfälzerwald, Südwestdeutschland (239 MB)
 pnpm segments --alps        # Alpenraum
 ```
 
-Nach dem Nachladen von Segmenten: `docker compose restart brouter`.
+Nach dem Nachladen von Segmenten: `make brouter-restart`.
 
 ## Befehle
 
@@ -110,6 +110,7 @@ Nach dem Nachladen von Segmenten: `docker compose restart brouter`.
 | `make check` | Typen und Svelte prüfen |
 | `make logs` | Docker-Logs folgen |
 | `make segments ARGS=E5_N45` | BRouter-Segmente laden |
+| `make brouter-restart` | BRouter neu starten, damit neue Segmente greifen |
 | `make db-migrate` / `db-generate` | Schema anwenden, Migration erzeugen |
 | `make db-admin NAME=… PASS=…` | Admin anlegen oder sein Passwort zurücksetzen; `ANZEIGE=…` optional. `make db-admin` allein erklärt die Werte |
 | `make db-studio` | Tabellen im Browser ansehen |
@@ -132,6 +133,7 @@ erfüllen ihren Zweck nicht.
 | Frontend + Server | SvelteKit, TypeScript, `adapter-node` | ein Node-Prozess, ein Docker-Image |
 | Karte | MapLibre GL, direkt angesprochen | MapLibre ist imperativ; eine deklarative Hülle arbeitet dagegen |
 | Routing | BRouter, selbst gehostet | als Fahrrad-Router entstanden, um Wanderprofile erweitert — beide Aktivitäten über *eine* Engine |
+| Speicher im Betrieb | App `mem_limit 512m`, BRouter `-Xmx512m` bei `mem_limit 640m` | die JVM kennt das Container-Limit nicht und dimensioniert nach dem Host: ohne `-Xmx` wächst sie hinein und wird erschlagen. Ausgeliefert war `-Xmx1g` — mehr als die Hälfte des freien Speichers auf dem Zielserver |
 | Höhendaten | Terrarium-Kacheln über `/api/dem` | die offenen Quellen senden kein CORS; der Umweg ist zugleich die Produktionsarchitektur |
 | Höhenlinien | `maplibre-contour` im Browser | keine vorgerenderten Kacheln nötig — die Linien entstehen aus dem Höhenmodell, das ohnehin geladen wird |
 | Datenbank | Postgres + PostGIS, Drizzle | Route als `geometry(LineStringZ)`: der Regionsfilter ist ein `ST_Intersects` auf einem GiST-Index statt einer Schleife in Node |
@@ -174,6 +176,27 @@ Ausführlich in [Anforderungen §7](docs/01-anforderungen.md); hier das Nötigst
    Wandern rot, Radfahren blau; semantische Farben nie als Akzent.
 5. **Leerzustände bieten etwas an.** Sie beschreiben keinen Zustand, sie zeigen den nächsten
    Schritt — inklusive der Gesten, die man sonst nie erfährt.
+
+## Deployment
+
+Der Weg läuft nach **[`optimize-hetzner/NEUE-APP.md`](../optimize-hetzner/NEUE-APP.md)** —
+Portvergabe, Datenbank an `pg-shared`, Compose-Skelett, Rechtsseiten, Reihenfolge der
+Live-Schaltung und die Checkliste stehen dort und gelten für alle Apps auf dem Host.
+
+Hier steht nur, was diese App eigenbringt:
+
+| | |
+| --- | --- |
+| Portblock | 3101 / 3102 — **noch nicht vergeben**, `umweg` beansprucht denselben |
+| Datenbank | eigene DB an `pg-shared`, ICU-Kollation `de-DE` |
+| Extension | **PostGIS** — fehlt im gemeinsamen Image, siehe `optimize-hetzner/OFFENE-PROBLEME.md` Punkt 28 |
+| Speicher | siehe Architekturtabelle oben |
+| Ortssuche | eigene Nominatim-Instanz ist auf dem Host **nicht leistbar** (Anforderungen §10) |
+| Vor dem Livegang | `PUBLIC_LEGAL_*` in `.env` setzen, sonst tragen Impressum und Datenschutz den Entwurfshinweis |
+
+`docker-compose.dev.yml` heißt bewusst so: es enthält einen eigenen Postgres, der auf dem
+Server falsch wäre. Unter diesem Namen kann ein blankes `docker compose up -d` im
+ausgecheckten Verzeichnis keinen zweiten Postgres starten.
 
 ## Datenquellen
 
