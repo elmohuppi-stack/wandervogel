@@ -68,9 +68,11 @@ oben auf der Liste danach, aber sie halten den ersten Deploy nicht auf.
 Die Begründungen stehen in
 [OFFENE-PROBLEME Punkt 27 und 28](../../optimize-hetzner/OFFENE-PROBLEME.md).
 
-- [ ] **1.1 Swap wieder einschalten** — `swapon /swapfile` **und** die Zeile in
-      `/etc/fstab`, sonst ist er nach dem nächsten Neustart wieder weg. *5 min*
-- [ ] **1.2 Hetzner-Snapshot**, nicht nur den Dump. *10 min*
+- [x] **1.1 Swap wieder einschalten** — erledigt am 8. August. 2 GiB aktiv,
+      `fstab`-Eintrag gesetzt, systemd-Einbindung geprüft
+      (`swap.target.requires/swapfile.swap`). Offen geblieben: `vm.swappiness`
+      steht auf der Vorgabe 60
+- [x] **1.2 Hetzner-Snapshot** — von Elmar erstellt am 8. August
 - [ ] **1.3 `pg-shared`-Image um PostGIS erweitern**, Container neu anlegen. *45 min*
 - [ ] **1.4 `amcheck` über alle vier Datenbanken.** *15 min*
 - [ ] **1.5 Datenbank + Rolle `wandervogel`** mit ICU-Kollation `de-DE`,
