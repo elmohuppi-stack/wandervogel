@@ -42,6 +42,32 @@ interface BrouterProperties {
 	messages?: unknown;
 }
 
+/**
+ * Welche BRouter-Kacheln dieser Zug braucht.
+ *
+ * BRouter teilt die Welt in 5°×5°-Felder, benannt nach ihrer Südwestecke:
+ * `E10_N45` deckt 10–15° Ost und 45–50° Nord ab. Ohne diese Rechnung sagte
+ * die Fehlermeldung nur, dass *irgendwas* fehlt — und man musste selbst
+ * herausfinden, welches Feld. Der häufigste Fall ist genau einer: die Karte
+ * zeigt die Alpen, geladen ist Südwestdeutschland.
+ *
+ * Es sind die Kacheln der Wegpunkte, nicht die des Wegs dazwischen. Für
+ * eine Route quer über eine Feldgrenze kann also eine dritte fehlen; das
+ * zu berechnen hieße, die Route zu kennen, die BRouter gerade nicht liefern
+ * konnte.
+ */
+function fehlendeKacheln(waypoints: Waypoint[]): string {
+	const feld = (n: number) => Math.floor(n / 5) * 5;
+	const namen = new Set(
+		waypoints.map((w) => {
+			const lon = feld(w.lon);
+			const lat = feld(w.lat);
+			return `${lon < 0 ? 'W' + -lon : 'E' + lon}_${lat < 0 ? 'S' + -lat : 'N' + lat}`;
+		})
+	);
+	return [...namen].join(', ');
+}
+
 export async function calculateRoute(
 	waypoints: Waypoint[],
 	activityType: ActivityType,
@@ -84,8 +110,8 @@ export async function calculateRoute(
 		const msg = body.trim().slice(0, 300);
 		if (/datafile.*not found|no data file/i.test(msg)) {
 			throw new BrouterError(
-				'Für dieses Gebiet fehlen die Routing-Segmente. ' +
-					'Herunterladen mit: pnpm run segments',
+				`Für dieses Gebiet fehlen die Routing-Segmente: ${fehlendeKacheln(waypoints)}. ` +
+					`Laden mit: make segments ARGS=${fehlendeKacheln(waypoints).split(', ')[0]}`,
 				'no_data'
 			);
 		}

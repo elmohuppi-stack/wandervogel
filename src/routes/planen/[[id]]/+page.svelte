@@ -24,6 +24,7 @@
 	import { emptyTour, newId, type RouteResult, type Tour } from '$lib/tour/types';
 	import Alert from '$lib/ui/Alert.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import ElevationProfile from '$lib/ui/ElevationProfile.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import IconButton from '$lib/ui/IconButton.svelte';
@@ -56,6 +57,13 @@
 	let saveError = $state<string | null>(null);
 	/** Wir gehen selbst zur Anmeldung — dann keine Rückfrage beim Verlassen. */
 	let zurAnmeldung = $state(false);
+	/** Rückfragen. Beide gehen über denselben Dialog. */
+	let verlassenOffen = $state(false);
+	let loeschenOffen = $state(false);
+	/** Wohin es nach dem Bestätigen weitergeht, und der Riegel dafür. */
+	let ziel: URL | null = null;
+	let darfVerlassen = false;
+	let loeschForm: HTMLFormElement | undefined = $state();
 	let ortungsfehler = $state<string | null>(null);
 	/**
 	 * Markierte Routen einblenden. Aus als Vorgabe (Anforderungen 7:
@@ -348,9 +356,26 @@
 	// nur überflüssig, sondern irreführend — sie klänge nach Datenverlust,
 	// wo der Entwurf eine Zeile zuvor geschrieben wurde.
 	beforeNavigate((nav) => {
-		if (!dirty || zurAnmeldung) return;
-		if (!confirm('Die Tour hat ungespeicherte Änderungen. Trotzdem verlassen?')) nav.cancel();
+		if (!dirty || zurAnmeldung || darfVerlassen) return;
+
+		/*
+		 * Beim Schließen des Tabs oder Neuladen kann nur der Browser fragen —
+		 * eine eigene Oberfläche bekommt dort keine Gelegenheit mehr. `cancel()`
+		 * löst dessen Standardabfrage aus; alles andere übernimmt der Dialog.
+		 */
+		nav.cancel();
+		if (nav.type === 'leave') return;
+
+		ziel = nav.to?.url ?? null;
+		verlassenOffen = true;
 	});
+
+	function verlassenBestaetigt() {
+		// Kein $state: der Riegel muss schon gelten, wenn goto() den Hook
+		// im selben Zug erneut auslöst.
+		darfVerlassen = true;
+		if (ziel) void goto(ziel);
+	}
 
 	/* --- Lokaler Entwurf --------------------------------------------------
 	   Gespeichert wird ausdrücklich; ein Absturz oder ein Neuladen darf
@@ -609,16 +634,17 @@
 
 					<!-- Löschen läuft über eine Formularaktion der Startseite:
 					     eine zerstörende Handlung, ein Weg. -->
-					<form
-						method="post"
-						action="/?/delete"
-						class="loeschen"
-						onsubmit={(e) => {
-							if (!confirm(`„${tour.name}" wirklich löschen?`)) e.preventDefault();
-						}}
-					>
+					<form method="post" action="/?/delete" class="loeschen" bind:this={loeschForm}>
 						<input type="hidden" name="id" value={tour.id} />
-						<Button variant="danger" size="sm" icon="trash" type="submit">Tour löschen</Button>
+						<Button
+							variant="danger"
+							size="sm"
+							icon="trash"
+							type="button"
+							onclick={() => (loeschenOffen = true)}
+						>
+							Tour löschen
+						</Button>
 					</form>
 				{/if}
 				</div>
@@ -633,6 +659,35 @@
 		bind:hoverAt
 	/>
 </div>
+
+<!-- Beide Rückfragen, ein Baustein. Vorher waren es zwei confirm(), die die
+     Adresse der Seite als Überschrift trugen und auf jedem Betriebssystem
+     anders aussahen. -->
+<ConfirmDialog
+	bind:open={verlassenOffen}
+	title="Ungespeicherte Änderungen"
+	icon="alert"
+	confirmLabel="Verlassen"
+	confirmIcon="chevron-left"
+	cancelLabel="Hierbleiben"
+	onConfirm={verlassenBestaetigt}
+>
+	An dieser Tour sind Änderungen, die noch nicht gespeichert sind. Beim Verlassen gehen sie
+	verloren.
+</ConfirmDialog>
+
+<ConfirmDialog
+	bind:open={loeschenOffen}
+	title="Tour löschen"
+	icon="trash"
+	tone="danger"
+	confirmLabel="Endgültig löschen"
+	confirmIcon="trash"
+	onConfirm={() => loeschForm?.submit()}
+>
+	„{tour.name}" wird endgültig entfernt. Das lässt sich nicht rückgängig machen — ein
+	GPX-Export vorher wäre die einzige Sicherung.
+</ConfirmDialog>
 
 <style>
 	.app {

@@ -19,9 +19,21 @@ import type { Actions, PageServerLoad } from './$types';
  * an — bei einem XHR-Login tut er das nicht zuverlässig.
  */
 
-export const load: PageServerLoad = async ({ url }) => ({
-	weiter: url.searchParams.get('weiter') ?? '/'
-});
+/**
+ * Seiten, die ein Gast auch ohne Anmeldung sehen darf.
+ *
+ * Muss zu `OFFENE_SEITEN` in hooks.server.ts passen — hier steht nur die
+ * Teilmenge, auf die ein Abbrechen sinnvoll zurückführt. Auf `/verwaltung`
+ * zurückzuschicken hieße, sofort wieder hier zu landen.
+ */
+const ZURUECK_ERLAUBT = new Set(['/', '/planen']);
+
+export const load: PageServerLoad = async ({ url }) => {
+	const weiter = url.searchParams.get('weiter') ?? '/';
+	// Nur der Pfad zählt: `/planen?x=1` soll genauso zurückführen.
+	const pfad = weiter.split('?')[0];
+	return { weiter, zurueck: ZURUECK_ERLAUBT.has(pfad) ? weiter : '/' };
+};
 
 /**
  * Wohin nach dem Anmelden.

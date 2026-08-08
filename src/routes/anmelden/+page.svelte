@@ -62,9 +62,18 @@
 
 		<input type="hidden" name="weiter" value={data.weiter} />
 
-		<Button type="submit" variant="primary" icon="check" loading={laeuft} disabled={laeuft}>
-			{laeuft ? 'Wird geprüft …' : 'Anmelden'}
-		</Button>
+		<!--
+			Abbrechen gehört seit dem Gastzugang dazu: die App ist auch ohne
+			Konto benutzbar, also ist die Anmeldung eine Wahl und keine
+			Schranke. Ohne diesen Knopf wäre die Seite eine Sackgasse für
+			jeden, der sie versehentlich geöffnet hat.
+		-->
+		<div class="knoepfe">
+			<Button variant="ghost" icon="chevron-left" href={data.zurueck}>Abbrechen</Button>
+			<Button type="submit" variant="primary" icon="check" loading={laeuft} disabled={laeuft}>
+				{laeuft ? 'Wird geprüft …' : 'Anmelden'}
+			</Button>
+		</div>
 	</form>
 
 	<!-- Unter dem Formular und nicht in der Ecke: auf der Anmeldeseite ist
@@ -99,6 +108,15 @@
 		border-radius: var(--r-md);
 		background: var(--surface);
 		box-shadow: var(--el-1);
+	}
+
+	/* Der bestätigende Knopf rechts, der abbrechende links daneben — dieselbe
+	   Anordnung wie im Bestätigungsdialog. Zwei Rückfragen in einer App
+	   dürfen sich nicht widersprechen. */
+	.knoepfe {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--sp-3);
 	}
 
 	footer {
