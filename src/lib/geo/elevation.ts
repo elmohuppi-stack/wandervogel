@@ -15,8 +15,7 @@
  *
  * **Wie.** Über dieselben Terrarium-Kacheln, die die Karte für Relief und
  * Höhenlinien benutzt — `/api/dem`, also den eigenen Server. Dekodiert wird
- * im Browser über ein Canvas: kein Paket, keine Serverlast, und derselbe
- * Weg funktioniert später offline aus dem Kachelvorrat.
+ * im Browser über ein Canvas: kein Paket und keine Serverlast.
  *
  * Terrarium kodiert die Höhe in den Farbkanälen:
  *     Höhe = R · 256 + G + B / 256 − 32768

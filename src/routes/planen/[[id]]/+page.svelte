@@ -334,8 +334,11 @@
 	   ihren Stand schon auf dem Server.
 
 	   Ohne Geometrie: die ist in 250 ms nachgerechnet und würde das
-	   5-MB-Kontingent nach wenigen Touren sprengen. Das hier ist zugleich
-	   die Naht, aus der später der Offlinespeicher wird. */
+	   5-MB-Kontingent nach wenigen Touren sprengen.
+
+	   Das ist Absturzsicherheit, kein Offline-Betrieb — den kennen die
+	   Anforderungen seit dem 7. August 2026 nicht mehr (§11). Der Entwurf
+	   ist dort ausdrücklich als Ausnahme benannt und bleibt. */
 
 	const DRAFT_KEY = 'wv.draft';
 	let draftTimer: ReturnType<typeof setTimeout> | undefined;

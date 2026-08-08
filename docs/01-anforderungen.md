@@ -176,7 +176,9 @@ framework-frei und wandern unverändert.
 |---|---|
 | Frontend + Server | SvelteKit, TypeScript, `adapter-node` — Bestandsentscheidung, siehe oben |
 | Karte | MapLibre GL JS (direkt, ohne Wrapper) |
+| **Höhenlinien und Schummerung** | **`maplibre-contour`**, im Browser aus den Höhenkacheln gerechnet — keine vorgerenderten Kacheln nötig |
 | Datenbank | **Postgres + PostGIS** |
+| **Datenzugriff** | **Drizzle** für Normalspalten, **`postgres.js`** roh für alles Räumliche — PostGIS-Funktionen gehören in SQL, nicht in ein ORM |
 | Höhenprofil | **selbst gezeichnetes SVG**, kein Chart.js — 71 Zeilen Pfadberechnung statt einer Bibliothek |
 | Geo-Mathematik | Turf.js (nur benötigte Module) |
 | Routing | **BRouter**, selbst gehostet im Docker |
@@ -284,6 +286,7 @@ Der MVP-Schnitt ist „Mittel" (Abschnitt 7).
 | MUSS | **GPX-Export** jeder Tour und jedes Tracks |
 | MUSS | Suche und Filter: Aktivitätsart, Länge, Aufstieg, Region, Datum, Stichwort |
 | MUSS | **Vergleich geplant ↔ gegangen/gefahren**: Abweichungen und Kennzahlen gegenübergestellt |
+| SOLL | Auf der Übersichtskarte hebt sich die eigene Tour vom Wegenetz-Overlay ab (Abschnitt 7) |
 | SOLL | Fotos und Notizen der Tour zugeordnet, auf der Karte platziert |
 | KANN | Jahres-/Gesamtstatistik, getrennt je Aktivitätsart |
 | KANN | Tourenbericht als Text, Alles-Export als ZIP |
@@ -327,6 +330,14 @@ Touren auf einen Blick besser als ein Foto vom Gipfel.
 - Kartenlayer sparsam — nicht alle Routen gleichzeitig bunt übereinander
   *(erklärte Kritik am waymarkedtrails-Overlay)*
 - Keine Beschriftung auf fremden Routenlinien; die eigene Tour ist das Einzige, was auffallen darf
+
+> **Diese letzte Zeile ist noch nicht erfüllt.** Auf der Übersichtskarte mit eingeschaltetem
+> Wegenetz konkurrieren die eigenen Touren mit dem Overlay: eine eigene Radtour ist blau, die
+> markierten Radrouten sind blau, beide etwa gleich breit — man muss die eigene Tour suchen.
+> Zu lösen entweder durch deutliches Zurücknehmen des Overlays im eingeschalteten Zustand
+> (dünner, blasser, entsättigt) oder durch eine helle Fassung unter der eigenen Linie, wie es
+> gedruckte Karten für die Hauptlinie tun. Das Overlay ist standardmäßig aus — der Mangel
+> zeigt sich also nur, wenn man es einschaltet, und ist genau deshalb lange nicht aufgefallen.
 
 > **Präzisierung (Nachtrag).** „Bedienelemente treten zurück" heißt **zurückhaltend im Gewicht**,
 > nicht **abwesend**. Eine Oberfläche ohne sichtbare Werkzeuge ist nicht ruhig, sie ist stumm —
@@ -473,8 +484,15 @@ Konkret heißt „zweigleisig" im Code, dass drei Dinge von Anfang an austauschb
    sind zwei Implementierungen derselben Signatur
 3. Der BRouter-Profilname als Parameter, abgeleitet aus der Aktivitätsart, überschreibbar
 
-Ebenso werden Kartenlayer, POI-Auswahl und Feldansicht-Kennzahlen aus der Aktivitätsart
-abgeleitet statt hart gesetzt.
+Ebenso werden Kartenlayer, POI-Auswahl, Feldansicht-Kennzahlen und die **Skalierung des
+Höhenprofils** aus der Aktivitätsart abgeleitet statt hart gesetzt.
+
+> Die Profilskalierung ist das jüngste Beispiel dafür, dass die Regel trägt. Ein Profil, das
+> immer auf `max − min` skaliert, macht aus 13 Höhenmetern in der Rheinebene ein Alpenprofil —
+> es vergrößert das Rauschen des Höhenmodells auf Panelhöhe. Die Untergrenze dagegen ist
+> aktivitätsabhängig: auf dem Rad deckt dieselbe Panelbreite ein Vielfaches der Strecke ab,
+> flach darf dort also flacher aussehen. Das wurde deshalb ein Feld in der
+> Aktivitätsdefinition (`profileMinSpanM`) und **keine Verzweigung in der Komponente**.
 
 ### MVP-Schnitt (Variante C)
 
@@ -495,37 +513,62 @@ gestrichen worden.
 
 ## 9. Umsetzung
 
-### Was steht
+### Wo der Stand steht
 
-Planungsansicht am Laptop mit Karte, Wegpunkten (klicken, ziehen, umsortieren, Rechtsklick
-löscht), Routing über selbst gehostetes BRouter, Kennzahlen, Höhenprofil mit gekoppeltem
-Kartenmarker, Höhenlinien und Schummerung im Browser gerechnet. Die Aktivitätsart steht als
-Naht in **einer** Datei (`src/lib/geo/activity.ts`) mit der Regel, dass nirgends im Code
-`if (activityType === 'hike')` stehen darf.
+**Nicht hier.** Was läuft und was fehlt, führt [`README.md`](../README.md) in den Abschnitten
+„Was schon läuft" und „Noch nicht" — dort in der Sprache, in der man es liest, bevor man die
+App startet.
 
-### Nächste Etappen
+Dieses Dokument beschreibt, **was gelten soll**. Die Tabellen in Abschnitt 6 sind deshalb
+bewusst ohne Statusspalte: achtzig Zeilen mit Häkchen wären achtzig Zeilen, die veralten.
+Der einzige Status, der hier geführt wird, ist der Abschluss einer Etappe.
 
-Aus dem Nachtrag zu Abschnitt 7 folgt die Reihenfolge: **erst das Fundament, dann die
-Tourenliste.** Jede Etappe ist für sich prüfbar.
+### Etappen
 
-| # | Etappe | Ergebnis |
-|---|---|---|
-| 1 | Gestaltungsmaße: Abstände, Radien, Ebenen, Bewegung, Schatten; Farbtokens vereinheitlicht | ein Maßsatz statt Einzelfälle |
-| 2 | Iconsatz, lokal gebündelt, eine Strichstärke; Musterseite `/stil` | Symbole für jede Aktion |
-| 3 | Bausteine: Knopf, Symbolknopf, Umschalter, Panel, Kennzahl, Leerzustand, Hinweis, Chip | fünf Knopfstile werden zwei Komponenten |
-| 4 | Hell/Dunkel vollständig, **inklusive Karte**, hell als Standard | Abschnitt 7 „Darstellung" erfüllt |
-| 5 | Naht erweitern: Icon, Betonung der Kennzahlen, Kurzsatz für Listen, POI-Symbole | dritte Aktivitätsart bleibt ein Eintrag |
-| 6 | Planer umgebaut: Kopfzeile mit Werkzeugen, einladender Leerzustand mit Gestenlegende, sichtbare Papierkörbe | die App sieht nicht mehr leer aus |
-| 7 | Datenbank: Drizzle, Tabelle `tours`, Route als PostGIS-Geometrie, Kennzahlen mitgeführt | Touren überleben das Neuladen |
-| 8 | Endpunkte zum Anlegen, Ändern, Löschen; Kennzahlen rechnet immer der Server | eine Schreibstelle, keine Abweichungen |
-| 9 | Speichern im Planer, `/planen/[id]`, lokaler Entwurf | Abschnitt 6.2 „Tour speichern" erfüllt |
-| 10 | Kartengrundlage aus `MapCanvas` herauslösen (reiner Umbau) | Voraussetzung für eine zweite Karte |
-| 11 | **Startbildschirm:** Tourenliste mit Umriss-Vorschau + Übersichtskarte, Filterchips, Sortierung | Abschnitt 6.5 „Archiv als Liste und Karte" |
-| 12 | GPX-Export, Sicherung mit einem Befehl | Abschnitt 6.5 und 7 „Backup" |
+Aus dem Nachtrag zu Abschnitt 7 folgte die Reihenfolge: **erst das Fundament, dann die
+Tourenliste.** Jede Etappe war für sich prüfbar.
 
-Danach in der Reihenfolge des MVP-Schnitts: Anmeldung und Rollen · Ortssuche (Nominatim) ·
-OSM-Routen-Overlay und Weg B · GPX-Import (Weg C) · POIs · Wetter ·
-Feldansicht · Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt.
+| # | Etappe | Ergebnis | |
+|---|---|---|---|
+| 1 | Gestaltungsmaße: Abstände, Radien, Ebenen, Bewegung, Schatten; Farbtokens vereinheitlicht | ein Maßsatz statt Einzelfälle | ✅ |
+| 2 | Iconsatz, lokal gebündelt, eine Strichstärke; Musterseite `/stil` | Symbole für jede Aktion | ✅ |
+| 3 | Bausteine: Knopf, Symbolknopf, Umschalter, Panel, Kennzahl, Leerzustand, Hinweis, Chip | fünf Knopfstile werden zwei Komponenten | ✅ |
+| 4 | Hell/Dunkel vollständig, **inklusive Karte**, hell als Standard | Abschnitt 7 „Darstellung" erfüllt | ⏳ |
+| 5 | Naht erweitern: Icon, Betonung der Kennzahlen, Kurzsatz für Listen, POI-Symbole | dritte Aktivitätsart bleibt ein Eintrag | ✅ |
+| 6 | Planer umgebaut: Kopfzeile mit Werkzeugen, einladender Leerzustand mit Gestenlegende, sichtbare Papierkörbe | die App sieht nicht mehr leer aus | ✅ |
+| 7 | Datenbank: Drizzle, Tabelle `tours`, Route als PostGIS-Geometrie, Kennzahlen mitgeführt | Touren überleben das Neuladen | ✅ |
+| 8 | Endpunkte zum Anlegen, Ändern, Löschen; Kennzahlen rechnet immer der Server | eine Schreibstelle, keine Abweichungen | ✅ |
+| 9 | Speichern im Planer, `/planen/[id]`, lokaler Entwurf | Abschnitt 6.2 „Tour speichern" erfüllt | ✅ |
+| 10 | Kartengrundlage aus `MapCanvas` herauslösen (reiner Umbau) | Voraussetzung für eine zweite Karte | ✅ |
+| 11 | **Startbildschirm:** Tourenliste mit Umriss-Vorschau + Übersichtskarte, Filterchips, Sortierung | Abschnitt 6.5 „Archiv als Liste und Karte" | ✅ |
+| 12 | GPX-Export, Sicherung mit einem Befehl | Abschnitt 6.5 und 7 „Backup" | ✅ |
+
+> **Etappe 4 ist nur zur Hälfte erfüllt und wird trotzdem nicht nachgezogen.** Die
+> Oberfläche kippt mit Hell und Dunkel, die Laufzeitebenen der Karte kippen über
+> `map/theme-paint.ts` mit — die **Basiskarte nicht**. Sie bleibt in beiden Modi hell, weil
+> `map.setStyle()` alle Laufzeitebenen wegwirft (Relief, Höhenlinien, Route, Wegpunkte
+> müssten neu aufgebaut werden). Der dunkle Kartenstil kommt deshalb erst mit den eigenen
+> Protomaps-Dateien. Bis dahin ist das ein bekannter, benannter Rest und kein vergessener.
+
+### Danach gebaut, außer der Reihe
+
+Ortssuche über Nominatim · eigener Standort auf beiden Karten · markiertes Wegenetz als
+einblendbares Overlay · Weg B (OSM-Relation übernehmen) · Weg C (GPX-Import).
+
+**Anmeldung und Rollen wurden dabei übersprungen** — sie standen als Erstes auf dieser Liste.
+Das ist nachzuholen, bevor irgendetwas öffentlich erreichbar wird: `hooks.server.ts` setzt
+den Eigentümer heute auf eine Konstante, jeder Besucher ist damit derselbe Nutzer und darf
+schreiben. Siehe [02-deployment-befund.md](02-deployment-befund.md), Abschnitt 4.
+
+### Was noch aussteht
+
+Anmeldung und Rollen (**zuerst**) · POIs je Aktivitätsart · Wetter · Feldansicht ·
+Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt · Untergrund entlang der Route
+einfärben · dunkler Kartenstil (Etappe 4).
+
+> **Regel, damit dieser Abschnitt nicht wieder veraltet.** Schließt eine Etappe, wird hier
+> das Häkchen gesetzt und im README „Was schon läuft" ergänzt. **Zwei Stellen, sonst keine.**
+> Vor dieser Regel beschrieb „Was steht" zwanzig Commits lang den Stand von vor Etappe 1.
 
 ### Noch offen für einen eigenen Plan
 
@@ -549,10 +592,20 @@ Feldansicht · Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt.
 | Routing (beide Aktivitätsarten) | **BRouter**, selbst gehostet | Weltsegmente ~7 GB, geringer RAM-Bedarf; Radprofile (`trekking`, `fastbike`, Gravel, MTB) und Wanderprofile (`sac_scale`, `trail_visibility`), höhenbewusst |
 | Wander- und Radrouten, POIs | **OSM** (`route=hiking`, `route=bicycle`) via eigener Extrakt | POIs: Hütte, Wasser, Einkehr, Radladen, Reparaturstation, Bahnhof |
 | Untergrund / Belagsqualität | **OSM** `surface`, `smoothness`, `tracktype` | im eigenen Vektor-Overlay mitführen |
-| Ortssuche | **Nominatim**, selbst gehostet | |
+| Ortssuche | **Nominatim**, selbst gehostet | auf dem heutigen Host nicht leistbar — siehe [02-deployment-befund.md](02-deployment-befund.md) §7 |
 | Wetter | **Open-Meteo** (DWD ICON, 2 km) | kostenlos, kein API-Key |
-| Wegmarkierungen (nur Planung) | waymarkedtrails Raster (`hiking`, `cycling`) | optionales Online-Overlay; langfristig eigenes Vektor-Overlay |
+| Wegmarkierungen | waymarkedtrails Raster (`hiking`, `cycling`) | optionales Overlay, standardmäßig **aus**; liegt über Planer *und* Übersichtskarte; langfristig eigenes Vektor-Overlay |
+| Routensuche (Weg B) | **Waymarked-Trails-API** | benannte Routen im Kartenausschnitt und nach Namen; langfristig eigener OSM-Extrakt |
 | Genauere Höhenlinien (optional) | **Sonny's LiDAR DTM** | DE/AT/Alpen, deutlich präziser im Wald und in engen Tälern |
+
+### Attribution ist Pflicht, nicht Zierde
+
+OpenStreetMap steht unter ODbL, die Waymarked-Trails-Daten unter CC-BY-SA. Beide verlangen
+eine **sichtbare** Namensnennung. Daraus folgt eine harte Regel für die Oberfläche:
+
+> Kein Bedienelement — kein Legenden-Chip, kein Knopf, kein Panel — darf die Attributionszeile
+> der Karte überdecken. Wer ein Element an den unteren Kartenrand setzt, setzt es **über** die
+> Zeile, nicht darauf.
 
 > **PMTiles bleiben, ihr Zweck ist ein anderer geworden.** Sie standen für zwei
 > Anforderungen zugleich: „im Funkloch funktionieren" und „keine Fremd-Fair-Use-Dienste im
