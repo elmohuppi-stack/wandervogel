@@ -697,8 +697,12 @@ POIs je Aktivitätsart · Wetter · Feldansicht · Track-Aufzeichnung ·
 Vergleich geplant ↔ durchgeführt · Untergrund entlang der Route einfärben ·
 dunkler Kartenstil (Etappe 4).
 
-**Vor dem Livegang:** die `PUBLIC_LEGAL_*`-Werte setzen — solange sie fehlen, tragen
-Impressum und Datenschutzerklärung einen Entwurfshinweis und erfüllen ihren Zweck nicht.
+> **Live seit dem 8. August 2026** unter `wandervogel.elmarhepp.de`. Betrieb und
+> Deploy-Weg stehen in `optimize-hetzner`; was diese App eigenbringt, im
+> [README](../README.md) unter „Deployment".
+>
+> Offen als erste Nacharbeit: die Höhendaten auf lokale PMTiles umstellen — der
+> einzige Dienst, den der Server dauerhaft fremd abruft (§7 Regel 1).
 
 > **Regel, damit dieser Abschnitt nicht wieder veraltet.** Schließt eine Etappe, wird hier
 > das Häkchen gesetzt und im README „Was schon läuft" ergänzt. **Zwei Stellen, sonst keine.**

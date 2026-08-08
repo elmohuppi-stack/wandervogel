@@ -179,9 +179,10 @@ Ausführlich in [Anforderungen §7](docs/01-anforderungen.md); hier das Nötigst
 
 ## Deployment
 
-Der konkrete Weg zum ersten Deploy steht als abzuarbeitende Liste in
-**[docs/02-deployment-plan.md](docs/02-deployment-plan.md)** — samt der beiden
-Entscheidungen, die vorher fallen müssen. Die Datei wird nach dem Livegang gelöscht.
+**Live seit dem 8. August 2026 unter [wandervogel.elmarhepp.de](https://wandervogel.elmarhepp.de).**
+Der Deploy-Weg steht in
+[`optimize-hetzner/DEPLOYMENT.md`](../optimize-hetzner/DEPLOYMENT.md) bei den
+übrigen elf Apps — dort wird er gepflegt.
 
 Der allgemeine Ablauf läuft nach **[`optimize-hetzner/NEUE-APP.md`](../optimize-hetzner/NEUE-APP.md)** —
 Portvergabe, Datenbank an `pg-shared`, Compose-Skelett, Rechtsseiten, Reihenfolge der
@@ -197,7 +198,7 @@ Hier steht nur, was diese App eigenbringt:
 | Extension | **PostGIS 3.6.4** — steht seit dem 8. August im gemeinsamen Bild `pg-shared:pg17-postgis` |
 | Speicher | siehe Architekturtabelle oben |
 | Ortssuche | öffentliches Nominatim als **benannte Ausnahme** nach [Anforderungen §7](docs/01-anforderungen.md), Regel 3 — eine eigene Instanz braucht ein Vielfaches der 3,7 GB |
-| Nächste Nacharbeit | Höhendaten auf lokale PMTiles: der einzige Dienst, den der **Server** dauerhaft fremd abruft (§7 Regel 1) |
+| Nächste Nacharbeit | Höhendaten auf lokale PMTiles: der einzige Dienst, den der **Server** dauerhaft fremd abruft (§7 Regel 1). Als Punkt 29 in `optimize-hetzner/OFFENE-PROBLEME.md` notiert |
 | Vor dem Livegang | `PUBLIC_LEGAL_*` in `.env` setzen, sonst tragen Impressum und Datenschutz den Entwurfshinweis |
 
 Gebaut wird über [`Dockerfile`](Dockerfile) (drei Stufen, 434 MB) und
