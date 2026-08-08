@@ -12,6 +12,8 @@
 	import { onMount } from 'svelte';
 	import { Map as MlMap, type GeoJSONSource } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
+	// Muss vor der ersten Karte laufen — warum, steht im Modul.
+	import './worker';
 	import type { FeatureCollection } from 'geojson';
 	import { DEFAULT_ACTIVITY, activity, type ActivityType } from '$lib/geo/activity';
 	import type { TourListItem } from '$lib/tour/types';

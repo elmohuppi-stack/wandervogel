@@ -30,6 +30,11 @@ export default defineConfig({
 		 * ERR_FAILED fehl. Ohne Worker verarbeitet MapLibre keine Kacheln:
 		 * die Karte bleibt vollständig leer, und zwar ohne eine einzige
 		 * Fehlermeldung in der Konsole.
+		 *
+		 * **Das deckt nur die Entwicklung ab.** `optimizeDeps` wirkt allein im
+		 * Entwicklungsserver; im gebauten Stand fehlte derselbe Worker aus
+		 * einem anderen Grund, und die Karte war live leer. Die Adresse setzen
+		 * wir deshalb selbst — siehe src/lib/map/worker.ts.
 		 */
 		exclude: ['maplibre-gl']
 	}
