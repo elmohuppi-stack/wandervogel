@@ -120,9 +120,19 @@ export interface ActivityDefinition {
 	/** Menschenlesbare Formel für die Oberfläche — die Anforderung
 	 *  verlangt Nachvollziehbarkeit, nicht eine Blackbox. */
 	durationExplainer: { short: string; long: string };
-	/** Vorbelegung für den Offline-Download. Radtouren sind länger und
-	 *  brauchen weniger Detail als eine Gratwanderung. */
-	offline: { corridorM: number; maxZoom: number };
+	/**
+	 * Kleinste Höhenspanne, die das Profil auf die volle Höhe zieht.
+	 *
+	 * Ohne diese Untergrenze skaliert das Profil immer auf `max - min`, und
+	 * eine Rheinebenen-Runde mit 13 m Unterschied sieht aus wie ein
+	 * Alpenkamm: das Rauschen des Höhenmodells wird auf Panelhöhe
+	 * vergrößert. Gemessen an der Radtour Wörth–Maximiliansau, 22 hm.
+	 *
+	 * Die Zahl gehört hierher und nicht in die Komponente, weil sie von der
+	 * Aktivitätsart abhängt — auf dem Rad deckt dieselbe Panelbreite ein
+	 * Vielfaches der Strecke ab, also darf flach auch flach aussehen.
+	 */
+	profileMinSpanM: number;
 	/** Startzoom der Feldansicht. */
 	fieldZoom: number;
 	/** Ab welcher Abweichung gewarnt wird. Auf dem Rad ist man schneller
@@ -167,7 +177,8 @@ export const ACTIVITIES: Record<ActivityType, ActivityDefinition> = {
 			short: 'DAV',
 			long: `Aufstieg ${HIKE_DEFAULTS.ascentMPerH} hm/h · Strecke ${HIKE_DEFAULTS.flatSpeedKmh} km/h`
 		},
-		offline: { corridorM: 2500, maxZoom: 15 },
+		// Eine Wanderung unter 100 m Spanne ist wirklich flach.
+		profileMinSpanM: 100,
 		fieldZoom: 15,
 		offRouteThresholdM: 50
 	},
@@ -215,7 +226,9 @@ export const ACTIVITIES: Record<ActivityType, ActivityDefinition> = {
 			short: 'Rad-Modell',
 			long: `Grundtempo ${BIKE_DEFAULTS.baseSpeedKmh} km/h · Steigung und Untergrund gewichtet`
 		},
-		offline: { corridorM: 4000, maxZoom: 14 },
+		// Doppelt so hoch wie beim Wandern: dieselbe Panelbreite trägt ein
+		// Vielfaches der Strecke, deshalb darf die Ebene auch flach liegen.
+		profileMinSpanM: 200,
 		fieldZoom: 14,
 		offRouteThresholdM: 80
 	}

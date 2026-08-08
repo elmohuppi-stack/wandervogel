@@ -41,7 +41,18 @@
 	<div class="text">
 		<div class="kopf">
 			<span class="art"><span class="punkt"></span>{def.label}</span>
-			{#if tour.date}<time datetime={tour.date}>{fmt.day(tour.date)}</time>{/if}
+			<!--
+				Ohne Datum bleibt die Zeile nicht leer. §6.5 führt das Datum
+				als Angabe der Tourenkarte; eine Lücke an der Stelle liest
+				sich wie ein Darstellungsfehler statt wie eine fehlende
+				Angabe. `updatedAt` wäre hier falsch — wann eine Tour zuletzt
+				bearbeitet wurde, ist nicht, wann sie stattfindet.
+			-->
+			{#if tour.date}
+				<time datetime={tour.date}>{fmt.day(tour.date)}</time>
+			{:else}
+				<span class="kein-datum">ohne Datum</span>
+			{/if}
 		</div>
 
 		<h3>{tour.name}</h3>
@@ -104,8 +115,14 @@
 		background: var(--route);
 	}
 
-	time {
+	time,
+	.kein-datum {
 		margin-left: auto;
+	}
+
+	.kein-datum {
+		font-style: italic;
+		opacity: 0.7;
 	}
 
 	h3 {

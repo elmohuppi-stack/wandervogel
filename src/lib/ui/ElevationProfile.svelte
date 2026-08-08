@@ -41,7 +41,20 @@
 
 	const lo = $derived(hasProfile ? Math.min(...elevations) : 0);
 	const hi = $derived(hasProfile ? Math.max(...elevations) : 0);
-	const span = $derived(hi - lo || 1);
+
+	/**
+	 * Nie auf die reine Spanne skalieren.
+	 *
+	 * `hi - lo` allein zieht jede Tour auf die volle Panelhöhe — 13 m
+	 * Unterschied in der Rheinebene sahen damit aus wie ein Alpenprofil,
+	 * weil das Rauschen des Höhenmodells mitvergrößert wurde. Die
+	 * Untergrenze kommt aus der Aktivitätsdefinition, damit hier keine
+	 * Verzweigung nach Aktivitätsart steht.
+	 *
+	 * Die Beschriftung nennt weiterhin die echten Werte: die Zahl bleibt
+	 * genau, nur die Zeichnung wird ehrlich über die Proportion.
+	 */
+	const span = $derived(Math.max(hi - lo, activity(activityType).profileMinSpanM));
 
 	function pathFor(w: number, h: number, pad: number): string {
 		let d = '';

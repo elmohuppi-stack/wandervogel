@@ -54,7 +54,20 @@
 <header class="topbar">
 	<Button variant="ghost" size="sm" icon="chevron-left" href="/">Touren</Button>
 
-	<input class="tour-name" bind:value={name} aria-label="Name der Tour" spellcheck="false" />
+	<!--
+		Ein <label> und kein <div>: der Stift ist damit Teil der Trefffläche
+		und fokussiert das Feld, statt nur danebenzustehen.
+
+		Der Rahmen liegt im Ruhezustand an. Vorher war er durchsichtig und
+		erschien erst beim Überfahren — das Feld sah aus wie eine
+		Überschrift, und das Ergebnis stand im Archiv: zwei Touren namens
+		„Neue Tour". Anforderungen §7: was man nur durch Ausprobieren
+		entdeckt, findet niemand.
+	-->
+	<label class="tour-name">
+		<input bind:value={name} aria-label="Name der Tour" spellcheck="false" />
+		<Icon name="pencil" size={13} />
+	</label>
 
 	<SegmentedControl
 		options={arten}
@@ -101,28 +114,45 @@
 	}
 
 	.tour-name {
+		display: flex;
+		align-items: center;
+		gap: var(--sp-2);
 		min-width: 8rem;
 		max-width: 22rem;
 		flex: 0 1 auto;
 		padding: var(--sp-2) var(--sp-3);
-		border: 1px solid transparent;
+		border: 1px solid var(--edge-soft);
 		border-radius: var(--r-sm);
 		background: transparent;
+		color: var(--ink-3);
+		cursor: text;
+		transition: border-color var(--dur-1) var(--ease);
+	}
+	.tour-name:hover {
+		border-color: var(--edge);
+		color: var(--ink-2);
+	}
+	/* Der Rahmen gehört der Hülle, also muss auch der Fokusring dorthin. */
+	.tour-name:focus-within {
+		border-color: var(--edge);
+		background: var(--paper-2);
+		color: var(--ink-2);
+		outline: var(--focus-w) solid var(--focus);
+		outline-offset: 1px;
+	}
+
+	.tour-name input {
+		min-width: 0;
+		flex: 1 1 auto;
+		border: none;
+		background: none;
+		padding: 0;
 		color: var(--ink);
 		font: inherit;
 		font-weight: 600;
 	}
-	.tour-name:hover {
-		border-color: var(--edge);
-	}
-	.tour-name:focus {
-		border-color: var(--edge);
-		background: var(--paper-2);
+	.tour-name input:focus {
 		outline: none;
-	}
-	.tour-name:focus-visible {
-		outline: var(--focus-w) solid var(--focus);
-		outline-offset: 1px;
 	}
 
 	.spacer {
