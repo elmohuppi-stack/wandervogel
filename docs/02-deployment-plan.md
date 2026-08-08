@@ -73,17 +73,24 @@ Die Begründungen stehen in
       (`swap.target.requires/swapfile.swap`). Offen geblieben: `vm.swappiness`
       steht auf der Vorgabe 60
 - [x] **1.2 Hetzner-Snapshot** — von Elmar erstellt am 8. August
-- [ ] **1.3 `pg-shared`-Image um PostGIS erweitern**, Container neu anlegen. *45 min*
-- [ ] **1.4 `amcheck` über alle vier Datenbanken.** *15 min*
-- [ ] **1.5 Datenbank + Rolle `wandervogel`** mit ICU-Kollation `de-DE`,
-      `REVOKE CONNECT … FROM PUBLIC`. *10 min*
-- [ ] **1.6 `CREATE EXTENSION postgis`** als Superuser, **nur** in dieser Datenbank. *1 min*
+- [x] **1.3 `pg-shared`-Image um PostGIS erweitert**, Container neu angelegt.
+      Eigenes Bild `pg-shared:pg17-postgis`, **Basisimage auf den Digest gepinnt**,
+      damit glibc unverändert bleibt
+- [x] **1.4 `amcheck` über alle vier Datenbanken** — 194 Indexe, ohne Befund,
+      dieselbe Zahl wie am 2. August. Keine ungültigen Indexe
+- [x] **1.5 Datenbank + Rolle `wandervogel`** mit ICU `de-DE`, unprivilegiert,
+      `REVOKE CONNECT … FROM PUBLIC`. Zugangsdaten unter
+      `/var/www/wandervogel/.env.db`, Mode 600
+- [x] **1.6 `CREATE EXTENSION postgis`** — PostGIS 3.6.4 mit GEOS und PROJ
 
-**Warum 1.1 vor 1.3 steht:** Die Neuanlage von `pg-shared` ist der Moment, in dem
-der Speicherbedarf kurz hochgeht. Ohne Polster ist das unnötig riskant — und der
-Swap ist seit dem Neustart am 2. August aus, ohne dass es jemandem aufgefallen wäre.
-
-**Nach 1.4 ist der riskante Teil vorbei.** Alles Weitere berührt nur noch Wandervogel.
+> **Phase 1 ist durch, und zwar ohne Schaden.** Die Belege im Einzelnen stehen in
+> [OFFENE-PROBLEME Punkt 28](../../optimize-hetzner/OFFENE-PROBLEME.md). Kurz:
+> glibc und ICU unverändert, `datcollversion` stimmt in allen vier Datenbanken mit
+> der tatsächlichen Version überein, Tabellenzahlen und Extensions unverändert,
+> alle vier fremden Endpunkte antworten mit 200.
+>
+> Die deutsche Sortierung ist nicht angenommen, sondern nachgemessen:
+> `Ähre < Apfel < Öl < Zeder`.
 
 ---
 
