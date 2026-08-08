@@ -5,12 +5,25 @@
  * das Docker-Image gebacken und ließe sich im Betrieb nicht mehr ändern.
  */
 
+import { building } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
-if (!env.DATABASE_URL) {
+/*
+ * Beim Bauen nicht werfen.
+ *
+ * SvelteKit importiert die Servermodule, um die Routen zu analysieren —
+ * ohne Datenbank und ohne `.env`. Ein Wurf beim Import machte den Build
+ * deshalb von einer laufenden Konfiguration abhängig, und `docker build`
+ * scheiterte daran, obwohl dort keine Datenbank hingehört.
+ *
+ * Der laute Abbruch bleibt, er kommt nur beim *Start* statt beim Bauen:
+ * eine fehlende Verbindungsurl soll den Server nicht anlaufen lassen,
+ * nicht erst bei der ersten Anfrage auffallen.
+ */
+if (!building && !env.DATABASE_URL) {
 	throw new Error('DATABASE_URL fehlt. Steht sie in .env? Vorlage: .env.example');
 }
 

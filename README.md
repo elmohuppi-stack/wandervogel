@@ -198,6 +198,18 @@ Hier steht nur, was diese App eigenbringt:
 | Ortssuche | eigene Nominatim-Instanz ist auf dem Host **nicht leistbar** (Anforderungen §10) |
 | Vor dem Livegang | `PUBLIC_LEGAL_*` in `.env` setzen, sonst tragen Impressum und Datenschutz den Entwurfshinweis |
 
+Gebaut wird über [`Dockerfile`](Dockerfile) (drei Stufen, 434 MB) und
+[`docker-compose.prod.yml`](docker-compose.prod.yml) — **ohne `db`-Service**, die
+Datenbank ist `pg-shared`. Der erste Zugang entsteht im laufenden Container:
+
+```bash
+docker compose -f docker-compose.prod.yml exec -e NAME=… -e PASS=… app node data/admin.mjs
+```
+
+`/health` prüft die Datenbankverbindung mit und meldet 503, wenn sie fehlt — ein
+Endpunkt, der nur „der Prozess lebt" sagt, ist im einzigen Moment nutzlos, in dem
+man ihn braucht.
+
 `docker-compose.dev.yml` heißt bewusst so: es enthält einen eigenen Postgres, der auf dem
 Server falsch wäre. Unter diesem Namen kann ein blankes `docker compose up -d` im
 ausgecheckten Verzeichnis keinen zweiten Postgres starten.

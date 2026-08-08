@@ -30,7 +30,16 @@ WORKDIR $BROUTER_HOME
 
 # BRouter lädt Segmente bedarfsweise von der Platte — deshalb genügt
 # wenig Heap. 1 GB ist reichlich und passt auf den kleinen Server.
-ENV JAVA_OPTS="-Xmx1g -Xms256m -DmaxRunningTime=300"
+# Der Standardwert ist bewusst klein.
+#
+# Vorher stand hier -Xmx1g mit dem Kommentar, BRouter lade Segmente
+# bedarfsweise von der Platte und brauche deshalb wenig Heap — die Zahl
+# widersprach also ihrer eigenen Begründung. Auf dem Zielserver (3,7 GB,
+# elf Apps) wäre ein Gigabyte mehr als ein Drittel des Verfügbaren.
+#
+# Das Prod-Compose überschreibt den Wert ohnehin; hier steht er, damit auch
+# ein blanker `docker run` nicht danebenliegt.
+ENV JAVA_OPTS="-Xmx384m -Xms128m -DmaxRunningTime=300"
 
 EXPOSE 17777
 

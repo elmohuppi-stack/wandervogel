@@ -1,0 +1,106 @@
+# Wandervogel auf helsinki-80gb.
+#
+# **Kein `db`-Service.** Die Datenbank ist `pg-shared`, die gemeinsame
+# Instanz — ein eigener Postgres ist genau der Zustand, den die
+# Konsolidierung am 1. August abgeschafft hat. Die Entwicklungsdienste
+# stehen in `docker-compose.dev.yml` und gehören nicht auf den Server.
+#
+# Aufruf: docker compose -f docker-compose.prod.yml up -d --build
+#
+# Regeln aus optimize-hetzner/ARCHITEKTUR.md 6:
+#   Ports nur auf 127.0.0.1, hetzner-network als external, `- default`
+#   mit aufführen, eigener Healthcheck, restart und mem_limit.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wv-app
+    restart: unless-stopped
+
+    # Nur auf die Loopback-Adresse. Öffentlich ist ausschließlich nginx;
+    # die App belegt nie 80 oder 443.
+    ports:
+      - '127.0.0.1:${APP_PORT:-3101}:3000'
+
+    environment:
+      # pg-shared liegt im gemeinsamen Netz, deshalb der Hostname und nicht
+      # localhost. Der Wert steht vollständig in der .env.
+      DATABASE_URL: ${DATABASE_URL}
+      BROUTER_URL: http://wv-brouter:17777
+      DEM_UPSTREAM_URL: ${DEM_UPSTREAM_URL}
+      NOMINATIM_URL: ${NOMINATIM_URL}
+      NOMINATIM_USER_AGENT: ${NOMINATIM_USER_AGENT}
+      PUBLIC_BASEMAP_STYLE_URL: ${PUBLIC_BASEMAP_STYLE_URL}
+      PUBLIC_ROUTE_OVERLAY_URL: ${PUBLIC_ROUTE_OVERLAY_URL:-}
+      # Ohne diese Werte tragen Impressum und Datenschutz einen
+      # Entwurfshinweis und erfüllen § 5 DDG nicht.
+      PUBLIC_LEGAL_NAME: ${PUBLIC_LEGAL_NAME}
+      PUBLIC_LEGAL_ADDRESS: ${PUBLIC_LEGAL_ADDRESS}
+      PUBLIC_LEGAL_CITY: ${PUBLIC_LEGAL_CITY}
+      PUBLIC_LEGAL_COUNTRY: ${PUBLIC_LEGAL_COUNTRY:-Deutschland}
+      PUBLIC_LEGAL_EMAIL: ${PUBLIC_LEGAL_EMAIL}
+      PUBLIC_LEGAL_RESPONSIBLE: ${PUBLIC_LEGAL_RESPONSIBLE}
+
+    # Node-Server mit SSR: der Richtwert aus ARCHITEKTUR 8 ist 256–512 MB.
+    # 384 lässt Luft für BRouter, ohne knapp zu sein.
+    mem_limit: 384m
+
+    depends_on:
+      brouter:
+        condition: service_healthy
+
+    networks:
+      - hetzner-network
+      - default
+
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+
+  brouter:
+    build:
+      context: ./docker/brouter
+      args:
+        BROUTER_VERSION: ${BROUTER_VERSION:-1.7.10}
+    container_name: wv-brouter
+    restart: unless-stopped
+
+    # Kein Port nach außen: nur die App spricht mit dem Router, und die
+    # liegt im selben Compose-Netz.
+    expose:
+      - '17777'
+
+    # Der Heap ist der eigentliche Kostenpunkt dieser App.
+    #
+    # Ausgeliefert wird -Xmx1g. Auf einem Host mit 3,7 GB und elf Apps wäre
+    # das mehr als ein Drittel des verfügbaren Speichers für einen Dienst,
+    # der seine Segmente ohnehin bedarfsweise von der Platte liest.
+    #
+    # `mem_limit` ≈ Heap + 25 %: die JVM braucht über dem Heap noch
+    # Metaspace, Thread-Stacks und Puffer (ARCHITEKTUR 8).
+    environment:
+      JAVA_OPTS: '-Xmx384m -Xms128m -DmaxRunningTime=300'
+    mem_limit: 512m
+
+    volumes:
+      - ./data/brouter/segments4:/opt/brouter/segments4:ro
+      - ./docker/brouter/customprofiles:/opt/brouter/customprofiles:ro
+
+    networks:
+      - default
+
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+
+networks:
+  # Das gemeinsame Netz, in dem pg-shared liegt. Von außen angelegt, nicht
+  # von dieser App — deshalb `external`.
+  hetzner-network:
+    external: true
+  # Muss mit aufgeführt werden: sobald `networks:` an einem Dienst steht,
+  # ist das Standardnetz nicht mehr automatisch dabei, und app und brouter
+  # fänden einander nicht.
+  default:

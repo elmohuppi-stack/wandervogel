@@ -35,7 +35,16 @@ import { grenzeFuer, pruefe } from '$lib/server/ratelimit';
  * sein: § 5 DDG verlangt „ständig verfügbar", und eine Anbieterkennzeichnung
  * hinter einer Anmeldung ist keine.
  */
-const OFFENE_SEITEN = new Set(['/', '/planen', '/anmelden', '/impressum', '/datenschutz']);
+const OFFENE_SEITEN = new Set([
+	'/',
+	'/planen',
+	'/anmelden',
+	'/impressum',
+	'/datenschutz',
+	// Docker bringt kein Sitzungscookie mit. Der Endpunkt gibt nichts preis
+	// außer „geht" oder „geht nicht" — siehe routes/health.
+	'/health'
+]);
 
 /**
  * Endpunkte ohne Konto — genau die, die der Planer zum Arbeiten braucht.

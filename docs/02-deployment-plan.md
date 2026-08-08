@@ -85,18 +85,27 @@ Swap ist seit dem Neustart am 2. August aus, ohne dass es jemandem aufgefallen w
 
 Reine Bauarbeit im Repo, fasst den Server nicht an. **Nichts davon existiert bisher.**
 
-- [ ] **2.1 `Dockerfile`** — Multi-Stage, schlankes Node-Image, `node build/index.js`,
+- [x] **2.1 `Dockerfile`** — Multi-Stage, schlankes Node-Image, `node build/index.js`,
       keine `node_modules` im finalen Bild.
-- [ ] **2.2 Bootstrap-Weg ins Image** — siehe unten, der zweite Stolperstein.
-- [ ] **2.3 `docker-compose.prod.yml`** — **ohne** `db`-Service, `hetzner-network` als
+- [x] **2.2 Bootstrap-Weg ins Image** — siehe unten, der zweite Stolperstein.
+- [x] **2.3 `docker-compose.prod.yml`** — **ohne** `db`-Service, `hetzner-network` als
       `external: true`, `- default` mit aufführen, Ports nur auf `127.0.0.1:3101`,
       `mem_limit`, `restart: unless-stopped`.
-- [ ] **2.4 `/health`**, das die Datenbankverbindung **mitprüft**. knoras `/health` tat
+- [x] **2.4 `/health`**, das die Datenbankverbindung **mitprüft**. knoras `/health` tat
       das nicht und meldete `ok`, während die App 500er lieferte.
 - [ ] **2.5 Migrationsschritt im Deploy:** `drizzle-kit migrate`, **nicht** `push`.
-- [ ] **2.6 BRouter-Speicher deckeln** — siehe Rechnung unten.
+- [x] **2.6 BRouter-Speicher deckeln** — siehe Rechnung unten.
 
-### 2.2 ausgeschrieben: der Bootstrap funktioniert nur lokal
+> **Phase 2 ist bis auf 2.5 erledigt und lokal gegen das gebaute Bild geprüft.**
+> Gemessen mit laufendem Prod-Stack: App 18 MiB von 384, BRouter 54 MiB von 512,
+> beide Container `healthy`, `/health` meldet bei gestoppter Datenbank 503 und
+> danach wieder 200, Routing läuft über das Compose-Netz, und der Bootstrap legt
+> im laufenden Container einen Admin an. Bild: 434 MB.
+>
+> Offen bleibt **2.5**, der Migrationsschritt — der gehört in den Deploy-Ablauf
+> und nicht ins Bild.
+
+### 2.2 ausgeschrieben: der Bootstrap funktioniert nur lokal — **gelöst**
 
 `make db-admin` braucht `data/admin.mjs`, `src/lib/server/password.ts` und Node. Ein
 Multi-Stage-Image enthält davon **nichts** — der erste Zugang ließe sich auf dem
@@ -105,7 +114,11 @@ Server also gar nicht anlegen. Zwei Wege, beide tragfähig:
 - die beiden Dateien mit ins finale Image kopieren, Aufruf über `docker compose exec`
 - oder als Unterbefehl in den Serverprozess: `node build/index.js --create-admin`
 
-**Zu entscheiden beim Schreiben des Dockerfiles, nicht danach.** Das Prinzip steht in
+**Gewählt wurde der erste Weg.** `data/admin.mjs` plus die beiden Module
+`password.ts` und `username.ts` liegen im Bild; Node 22 strippt die Typen, und
+`postgres` ist als Laufzeitabhängigkeit ohnehin da. Die Gebrauchsanweisung des
+Skripts nennt jetzt beide Aufrufwege — `make db-admin` auf dem Entwicklungsrechner,
+`docker compose exec` auf dem Server. Das Prinzip steht in
 [NEUE-APP §4.1](../../optimize-hetzner/NEUE-APP.md#41-der-erste-admin); dort steht auch,
 warum das Passwort über `stdin` gehört und nicht als Argument.
 

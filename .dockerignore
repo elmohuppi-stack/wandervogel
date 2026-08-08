@@ -1,0 +1,23 @@
+# Was nicht ins Bauverzeichnis gehört.
+#
+# `data/` ist der größte Posten: dort liegen die BRouter-Segmente (bereits
+# 239 MB, im Betrieb ~800 MB), das Postgres-Datenverzeichnis und die
+# Prüfbilder. Ohne diese Zeile wanderte alles davon in jeden Build-Kontext.
+# Die eine Datei daraus, die ins Bild muss, holt das Dockerfile ausdrücklich.
+data/
+!data/admin.mjs
+
+.git
+.github
+node_modules
+build
+.svelte-kit
+.run
+.env
+.env.*
+!.env.example
+docs
+*.md
+!README.md
+docker-compose.dev.yml
+e2e-*.png
