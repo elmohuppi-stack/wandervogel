@@ -321,6 +321,25 @@
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ ...tour, route })
 			});
+			/*
+			 * Sitzung unterwegs abgelaufen — derselbe Weg wie beim Gast.
+			 *
+			 * Eine Sitzung kann enden, während die Seite offen steht: sie läuft
+			 * ab, ein Admin deaktiviert das Konto, oder man meldet sich in
+			 * einem zweiten Tab ab. Die Seite weiß davon nichts, denn ihr
+			 * `data.user` stammt vom letzten Laden. Ohne diesen Zweig endete
+			 * der Klick in „Nicht angemeldet" — einer Meldung, die stimmt und
+			 * trotzdem nicht weiterhilft, weil sie die Tour im Ungewissen
+			 * lässt. Jetzt wird der Entwurf gesichert und der Weg führt zur
+			 * Anmeldung, von der aus man zurückkommt.
+			 */
+			if (res.status === 401) {
+				saveDraft();
+				zurAnmeldung = true;
+				await goto(`/anmelden?weiter=${encodeURIComponent('/planen')}`);
+				return;
+			}
+
 			const antwort = await res.json();
 			if (!res.ok) {
 				saveError = antwort.error ?? 'Speichern fehlgeschlagen';
