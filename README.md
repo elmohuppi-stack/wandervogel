@@ -208,7 +208,7 @@ Datenbank ist `pg-shared`. Der erste Zugang entsteht im laufenden Container:
 ```bash
 # Das Passwort wird verdeckt abgefragt — nicht als Variable übergeben,
 # sonst steht es in der Shell-History und in `ps`.
-docker compose -f docker-compose.prod.yml exec -it app node scripts/admin.mjs elmar 'Elmar Hepp'
+docker compose -f docker-compose.prod.yml exec -it wandervogel node scripts/admin.mjs elmar 'Elmar Hepp'
 ```
 
 `/health` prüft die Datenbankverbindung mit und meldet 503, wenn sie fehlt — ein

@@ -12,7 +12,14 @@
 #   mit aufführen, eigener Healthcheck, restart und mem_limit.
 
 services:
-  app:
+  # Der Service heißt NICHT "app". Compose setzt den Service-Namen in jedem
+  # Netz als Alias — auch im geteilten hetzner-network. Dort hießen am
+  # 8. August vier Container gleichzeitig "app" (knora, sari, wetter und
+  # dieser hier), Docker-DNS lieferte alle vier IPs im Wechsel, und knoras
+  # Frontend proxyte seine API-Calls reihum an wandervogel: HTTP 401
+  # "Nicht angemeldet" mitten in einer fremden Anwendung. Im geteilten Netz
+  # muss der Service-Name deshalb app-weit eindeutig sein.
+  wandervogel:
     build:
       context: .
       dockerfile: Dockerfile

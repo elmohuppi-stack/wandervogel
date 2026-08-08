@@ -86,7 +86,7 @@ if (!name) {
 	console.error("  make db-admin NAME=elmar ANZEIGE='Elmar Hepp'");
 	console.error('');
 	console.error('Im laufenden Container auf dem Server:');
-	console.error('  docker compose -f docker-compose.prod.yml exec -it app \\');
+	console.error('  docker compose -f docker-compose.prod.yml exec -it wandervogel \\');
 	console.error("    node scripts/admin.mjs elmar 'Elmar Hepp'");
 	console.error('');
 	console.error('Der Anzeigename ist optional; ohne Angabe wird der Anmeldename genommen.');

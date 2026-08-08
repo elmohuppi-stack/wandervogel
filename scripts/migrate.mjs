@@ -18,7 +18,7 @@
  * Schritt scheitert dort, wo man hinschaut.
  *
  *   Entwicklung:  make db-migrate
- *   Server:       docker compose -f docker-compose.prod.yml run --rm app \
+ *   Server:       docker compose -f docker-compose.prod.yml run --rm wandervogel \
  *                   node scripts/migrate.mjs
  */
 
