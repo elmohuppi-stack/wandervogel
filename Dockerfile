@@ -65,6 +65,9 @@ COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 # 22 strippt Typen von selbst. Genau dafür importieren sie nichts außer
 # node-Bordmitteln (siehe den Kopf von src/lib/server/password.ts).
 COPY --from=build /app/data/admin.mjs ./data/admin.mjs
+# Migrationen laufen ueber drizzle-orm statt drizzle-kit — Letzteres ist eine
+# Entwicklungsabhaengigkeit und liegt hier nicht. Begruendung im Skript.
+COPY --from=build /app/data/migrate.mjs ./data/migrate.mjs
 COPY --from=build /app/src/lib/server/password.ts ./src/lib/server/password.ts
 COPY --from=build /app/src/lib/server/username.ts ./src/lib/server/username.ts
 

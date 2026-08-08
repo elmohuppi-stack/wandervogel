@@ -6,6 +6,7 @@
 # Die eine Datei daraus, die ins Bild muss, holt das Dockerfile ausdrücklich.
 data/
 !data/admin.mjs
+!data/migrate.mjs
 
 .git
 .github

@@ -106,18 +106,19 @@ Reine Bauarbeit im Repo, fasst den Server nicht an. **Nichts davon existiert bis
       `mem_limit`, `restart: unless-stopped`.
 - [x] **2.4 `/health`**, das die Datenbankverbindung **mitprüft**. knoras `/health` tat
       das nicht und meldete `ok`, während die App 500er lieferte.
-- [ ] **2.5 Migrationsschritt im Deploy:** `drizzle-kit migrate`, **nicht** `push`.
+- [x] **2.5 Migrationsschritt im Deploy** — über `data/migrate.mjs`, nicht über
+      `drizzle-kit`: Letzteres ist eine Entwicklungsabhängigkeit und liegt im
+      Produktionsbild nicht. `drizzle-orm` bringt denselben Migrator mit und ist
+      als Laufzeitabhängigkeit ohnehin da. Ein eigener Schritt, nicht beim
+      Serverstart — sonst sucht man einen Migrationsfehler in den Startlogs
 - [x] **2.6 BRouter-Speicher deckeln** — siehe Rechnung unten.
 
-> **Phase 2 ist bis auf 2.5 erledigt und lokal gegen das gebaute Bild geprüft.**
+> **Phase 2 ist vollständig erledigt und lokal gegen das gebaute Bild geprüft.**
 > Gemessen mit laufendem Prod-Stack: App 18 MiB von 384, BRouter 54 MiB von 512,
 > beide Container `healthy`, `/health` meldet bei gestoppter Datenbank 503 und
 > danach wieder 200, Routing läuft über das Compose-Netz, und der Bootstrap legt
 > im laufenden Container einen Admin an. Bild: 434 MB.
 >
-> Offen bleibt **2.5**, der Migrationsschritt — der gehört in den Deploy-Ablauf
-> und nicht ins Bild.
-
 ### 2.2 ausgeschrieben: der Bootstrap funktioniert nur lokal — **gelöst**
 
 `make db-admin` braucht `data/admin.mjs`, `src/lib/server/password.ts` und Node. Ein
