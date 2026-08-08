@@ -185,9 +185,12 @@ Ab hier ist die Reihenfolge zwingend: certbot braucht einen erreichbaren Vhost, 
 Vhost einen laufenden Container, der Container seine Datenbank. Ausführlich in
 [NEUE-APP §4](../../optimize-hetzner/NEUE-APP.md#4-live-schaltung).
 
-- [ ] **4.1** Verzeichnis `/var/www/wandervogel`, Code per git oder rsync
-- [ ] **4.2** `.env` mit Mode 600 — **inklusive `PUBLIC_LEGAL_*`**
-- [ ] **4.3** Stack starten, `docker ps` prüfen, **erst dann weiter**
+- [x] **4.1** `/var/www/wandervogel`, Code per **git** (`git init` + fetch statt
+      clone — das Verzeichnis enthielt schon Segmente und Zugangsdaten).
+      Deployt wird `main`; `gestaltung` ist dorthin vorgespult
+- [x] **4.2** `.env` mit Mode 600 — **`PUBLIC_LEGAL_*` sind noch leer**, siehe unten
+- [x] **4.3** Stack läuft: beide Container `healthy`, App 20 MiB von 384,
+      BRouter 63 MiB von 512. Migrationen angewandt (2)
 - [ ] **4.4** **Ersten Admin anlegen** (Weg aus 2.2) — **vor** dem Vhost
 - [ ] **4.5** nginx-Vhost in `sites-available` **und** Symlink in `sites-enabled`
 - [ ] **4.6** Zertifikat per certbot
@@ -200,6 +203,25 @@ ersten Sekunde, in der der Vhost steht.
 
 **Zu 4.4:** Vor dem Vhost, weil eine erreichbare App ohne Admin im besten Fall
 nutzlos ist.
+
+> **Stand 8. August, 12:50 — die App läuft auf `127.0.0.1:3101`, ist aber noch
+> nicht öffentlich.** Gemessen: `/health` meldet `ok` mit `db: true`, Start-,
+> Anmelde- und Impressumsseite antworten mit 200, und Routing funktioniert
+> gegen die neuen Segmente — **auch an der Zugspitze**, dem Feld, das lokal
+> fehlte.
+>
+> Es fehlen genau zwei Dinge, und beide brauchen Elmar:
+>
+> 1. **Der erste Admin** (4.4) — Benutzername und Passwort sind seine.
+> 2. **Die `PUBLIC_LEGAL_*`-Werte** in `/var/www/wandervogel/.env`. Solange sie
+>    leer sind, tragen Impressum und Datenschutz den Entwurfshinweis — nachgeprüft,
+>    er steht dort. **Der Vhost darf erst danach**, sonst ist eine öffentlich
+>    erreichbare Seite ohne gültige Anbieterkennzeichnung online.
+>
+> Zwei Stolpersteine haben sich beim Deploy gezeigt und sind behoben: die
+> Betriebsskripte lagen im gitignorierten `data/` und fehlten auf dem Server,
+> und das per `openssl rand -base64` erzeugte Passwort enthielt ein `/`, das
+> den Verbindungsstring zerlegte (jetzt in ARCHITEKTUR 4.1 korrigiert).
 
 ---
 
