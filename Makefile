@@ -221,7 +221,7 @@ db-studio: env node_modules services ## Tabellen im Browser ansehen
 # hineinkommt.
 db-admin: env node_modules services ## Admin anlegen oder Passwort zurücksetzen: NAME= PASS= ANZEIGE=
 	@[ -n "$(NAME)" ] && [ -n "$(PASS)" ] || { $(MAKE) --no-print-directory db-admin-hilfe; exit 1; }
-	@$(DB_ENV) NAME='$(NAME)' PASS='$(PASS)' ANZEIGE='$(ANZEIGE)' node data/admin.mjs
+	@$(DB_ENV) NAME='$(NAME)' PASS='$(PASS)' ANZEIGE='$(ANZEIGE)' node scripts/admin.mjs
 
 # Ohne eckige Klammern.
 #

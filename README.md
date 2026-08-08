@@ -205,7 +205,7 @@ Gebaut wird über [`Dockerfile`](Dockerfile) (drei Stufen, 434 MB) und
 Datenbank ist `pg-shared`. Der erste Zugang entsteht im laufenden Container:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec -e NAME=… -e PASS=… app node data/admin.mjs
+docker compose -f docker-compose.prod.yml exec -e NAME=… -e PASS=… app node scripts/admin.mjs
 ```
 
 `/health` prüft die Datenbankverbindung mit und meldet 503, wenn sie fehlt — ein

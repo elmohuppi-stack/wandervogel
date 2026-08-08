@@ -1,12 +1,10 @@
 # Was nicht ins Bauverzeichnis gehört.
 #
-# `data/` ist der größte Posten: dort liegen die BRouter-Segmente (bereits
-# 239 MB, im Betrieb ~800 MB), das Postgres-Datenverzeichnis und die
-# Prüfbilder. Ohne diese Zeile wanderte alles davon in jeden Build-Kontext.
-# Die eine Datei daraus, die ins Bild muss, holt das Dockerfile ausdrücklich.
+# `data/` ist der größte Posten und fliegt vollständig raus: dort liegen die
+# BRouter-Segmente (720 MB), das Postgres-Datenverzeichnis und die Prüfbilder.
+# Betriebsskripte liegen dagegen in `scripts/` und kommen mit — sie gehören
+# ins Bild und, anders als data/, auch ins Repository.
 data/
-!data/admin.mjs
-!data/migrate.mjs
 
 .git
 .github

@@ -2,7 +2,7 @@
  * Passwort-Hashing mit scrypt.
  *
  * **Diese Datei importiert nichts außer `node:crypto`** — kein `$app`, kein
- * `$env`, keine Datenbank. Der Grund ist praktisch: `data/admin.mjs` legt
+ * `$env`, keine Datenbank. Der Grund ist praktisch: `scripts/admin.mjs` legt
  * den ersten Admin an, bevor irgendeine Sitzung existiert, und läuft
  * deshalb außerhalb von SvelteKit. Node 22 strippt Typen von selbst, also
  * kann das Skript genau dieses Modul importieren.
@@ -63,7 +63,7 @@ const b64 = (b: Buffer) => b.toString('base64url');
  * Was den Schutz trägt, steht woanders: scrypt mit ordentlichen Kosten,
  * gleiche Rechenzeit bei unbekanntem Namen, und keine Selbstregistrierung.
  * Diese Zahl gehört hierher und nicht in die Oberfläche, damit Verwaltung
- * und `data/admin.mjs` nicht getrennt darüber entscheiden.
+ * und `scripts/admin.mjs` nicht getrennt darüber entscheiden.
  */
 export const MIN_PASSWORT = 4;
 

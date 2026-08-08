@@ -2,7 +2,7 @@
  * Der Anmeldename: normalisieren und prüfen.
  *
  * **Diese Datei importiert nichts** — kein `$app`, kein `$env`, keine
- * Datenbank. Aus demselben Grund wie `password.ts`: `data/admin.mjs` legt
+ * Datenbank. Aus demselben Grund wie `password.ts`: `scripts/admin.mjs` legt
  * den ersten Admin außerhalb von SvelteKit an und braucht dieselbe Regel.
  * Node 22 strippt Typen von selbst, also kann das Skript hier direkt
  * importieren.

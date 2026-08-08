@@ -3,7 +3,7 @@
  *
  * **Die Regel dieses Moduls:** Jeder Schreibweg normalisiert den
  * Anmeldenamen, und zwar über `../username` — dieselbe Funktion, die
- * `data/admin.mjs` außerhalb von SvelteKit benutzt. Die Regel an zwei
+ * `scripts/admin.mjs` außerhalb von SvelteKit benutzt. Die Regel an zwei
  * Stellen zu halten ist genau einmal schiefgegangen: das Skript verbot das
  * `@` und lehnte damit E-Mail-Adressen ab, die 6.1 ausdrücklich zulässt.
  *

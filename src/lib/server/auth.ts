@@ -2,7 +2,7 @@
  * Sitzungen (Anforderungen 6.1).
  *
  * Das Hashen der Passwörter steht bewusst nebenan in `password.ts`, weil
- * `data/admin.mjs` es außerhalb von SvelteKit braucht. Hier wird es nur
+ * `scripts/admin.mjs` es außerhalb von SvelteKit braucht. Hier wird es nur
  * durchgereicht, damit Aufrufer eine Anlaufstelle haben.
  *
  * **Sitzungen in der Datenbank, kein JWT.** 6.1 verlangt, dass ein Admin

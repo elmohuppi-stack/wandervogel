@@ -106,7 +106,7 @@ Reine Bauarbeit im Repo, fasst den Server nicht an. **Nichts davon existiert bis
       `mem_limit`, `restart: unless-stopped`.
 - [x] **2.4 `/health`**, das die Datenbankverbindung **mitprüft**. knoras `/health` tat
       das nicht und meldete `ok`, während die App 500er lieferte.
-- [x] **2.5 Migrationsschritt im Deploy** — über `data/migrate.mjs`, nicht über
+- [x] **2.5 Migrationsschritt im Deploy** — über `scripts/migrate.mjs`, nicht über
       `drizzle-kit`: Letzteres ist eine Entwicklungsabhängigkeit und liegt im
       Produktionsbild nicht. `drizzle-orm` bringt denselben Migrator mit und ist
       als Laufzeitabhängigkeit ohnehin da. Ein eigener Schritt, nicht beim
@@ -121,14 +121,20 @@ Reine Bauarbeit im Repo, fasst den Server nicht an. **Nichts davon existiert bis
 >
 ### 2.2 ausgeschrieben: der Bootstrap funktioniert nur lokal — **gelöst**
 
-`make db-admin` braucht `data/admin.mjs`, `src/lib/server/password.ts` und Node. Ein
+`make db-admin` braucht `scripts/admin.mjs`, `src/lib/server/password.ts` und Node. Ein
 Multi-Stage-Image enthält davon **nichts** — der erste Zugang ließe sich auf dem
 Server also gar nicht anlegen. Zwei Wege, beide tragfähig:
 
 - die beiden Dateien mit ins finale Image kopieren, Aufruf über `docker compose exec`
 - oder als Unterbefehl in den Serverprozess: `node build/index.js --create-admin`
 
-**Gewählt wurde der erste Weg.** `data/admin.mjs` plus die beiden Module
+> **Beim ersten Deploy nachgebessert:** die Skripte lagen zunächst in `data/` —
+> und `/data` steht in `.gitignore`. Sie waren damit nie im Repository, und auf
+> dem Server fehlten sie schlicht. Der Build brach ab, was der glückliche Fall
+> ist: aufgefallen wäre es sonst erst beim ersten Anmeldeversuch. Jetzt liegen
+> sie in `scripts/`, wo Werkzeug hingehört; `data/` bleibt Laufzeitbestand.
+
+**Gewählt wurde der erste Weg.** `scripts/admin.mjs` plus die beiden Module
 `password.ts` und `username.ts` liegen im Bild; Node 22 strippt die Typen, und
 `postgres` ist als Laufzeitabhängigkeit ohnehin da. Die Gebrauchsanweisung des
 Skripts nennt jetzt beide Aufrufwege — `make db-admin` auf dem Entwicklungsrechner,

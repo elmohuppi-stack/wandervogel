@@ -54,20 +54,21 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 
-# Der Bootstrap muss ins Bild.
+# Betriebsskripte und die Module, die sie brauchen.
 #
-# `make db-admin` ist der einzige Weg in eine frische Installation, und er
-# braucht drei Dateien: das Skript, das Passwort-Modul und die Namensregel.
-# Ohne sie ließe sich auf dem Server kein erster Zugang anlegen — und man
-# merkt es genau dann, wenn man sich zum ersten Mal anmelden will.
+# Sie liegen in `scripts/` und nicht in `data/`, und das ist beim ersten
+# Deploy teuer aufgefallen: `/data` steht in `.gitignore` — die Skripte waren
+# also nie im Repository, und auf dem Server fehlten sie schlicht. `data/` ist
+# Laufzeitbestand (Segmente, Postgres-Verzeichnis, Prüfbilder), `scripts/` ist
+# Werkzeug. Der Unterschied war vorher nicht sauber gezogen.
 #
 # Die beiden Module sind TypeScript und werden hier *nicht* übersetzt: Node
 # 22 strippt Typen von selbst. Genau dafür importieren sie nichts außer
 # node-Bordmitteln (siehe den Kopf von src/lib/server/password.ts).
-COPY --from=build /app/data/admin.mjs ./data/admin.mjs
-# Migrationen laufen ueber drizzle-orm statt drizzle-kit — Letzteres ist eine
-# Entwicklungsabhaengigkeit und liegt hier nicht. Begruendung im Skript.
-COPY --from=build /app/data/migrate.mjs ./data/migrate.mjs
+COPY --from=build /app/scripts/admin.mjs ./scripts/admin.mjs
+# Migrationen über drizzle-orm statt drizzle-kit — Letzteres ist eine
+# Entwicklungsabhängigkeit und liegt hier nicht. Begründung im Skript.
+COPY --from=build /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=build /app/src/lib/server/password.ts ./src/lib/server/password.ts
 COPY --from=build /app/src/lib/server/username.ts ./src/lib/server/username.ts
 
