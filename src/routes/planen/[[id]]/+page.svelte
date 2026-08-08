@@ -15,7 +15,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
-	import { beforeNavigate, replaceState } from '$app/navigation';
+	import { beforeNavigate, goto, replaceState } from '$app/navigation';
 	import { DEFAULT_ACTIVITY, activity } from '$lib/geo/activity';
 	import MapCanvas from '$lib/map/MapCanvas.svelte';
 	import { sampleElevations } from '$lib/geo/elevation';
@@ -54,6 +54,8 @@
 
 	let saving = $state(false);
 	let saveError = $state<string | null>(null);
+	/** Wir gehen selbst zur Anmeldung — dann keine Rückfrage beim Verlassen. */
+	let zurAnmeldung = $state(false);
 	let ortungsfehler = $state<string | null>(null);
 	/**
 	 * Markierte Routen einblenden. Aus als Vorgabe (Anforderungen 7:
@@ -285,6 +287,23 @@
 
 	async function save() {
 		if (saving || !route) return;
+
+		/*
+		 * Gäste dürfen planen, aber nicht behalten.
+		 *
+		 * Statt einer Fehlermeldung führt der Weg zur Anmeldung — und die
+		 * Arbeit überlebt: der Entwurf liegt in localStorage, wird hier
+		 * ausdrücklich noch einmal geschrieben und nach der Rückkehr wieder
+		 * eingelesen. Ohne dieses eine `saveDraft()` verlöre genau der
+		 * Klick die Tour, der sie retten sollte.
+		 */
+		if (!data.user) {
+			saveDraft();
+			zurAnmeldung = true;
+			goto(`/anmelden?weiter=${encodeURIComponent('/planen')}`);
+			return;
+		}
+
 		saving = true;
 		saveError = null;
 		try {
@@ -323,8 +342,13 @@
 	}
 
 	// Ungespeichertes nicht stillschweigend verlieren.
+	//
+	// Der Gang zur Anmeldung ist davon ausgenommen: dort wird die Tour ja
+	// gerade gerettet, und eine Rückfrage „trotzdem verlassen?" wäre nicht
+	// nur überflüssig, sondern irreführend — sie klänge nach Datenverlust,
+	// wo der Entwurf eine Zeile zuvor geschrieben wurde.
 	beforeNavigate((nav) => {
-		if (!dirty) return;
+		if (!dirty || zurAnmeldung) return;
 		if (!confirm('Die Tour hat ungespeicherte Änderungen. Trotzdem verlassen?')) nav.cancel();
 	});
 
@@ -347,6 +371,16 @@
 		localStorage.removeItem(DRAFT_KEY);
 	}
 
+	/** Sofort schreiben, ohne die halbe Sekunde Verzögerung des Effekts. */
+	function saveDraft() {
+		if (!browser || tour.id) return;
+		if (tour.waypoints.length > 0) localStorage.setItem(DRAFT_KEY, signature(tour));
+		else clearDraft();
+	}
+
+	// Verzögert, damit nicht jedes Ziehen eines Wegpunkts schreibt. Beim
+	// Gang zur Anmeldung reicht das nicht — dort ruft save() saveDraft()
+	// unmittelbar auf, sonst wäre die Tour nach 500 ms Fahrtwind weg.
 	$effect(() => {
 		if (tour.id) return;
 		const stand = signature(tour);
@@ -405,6 +439,7 @@
 		{dirty}
 		saved={!!tour.id}
 		canSave={!!route}
+		angemeldet={!!data.user}
 		onSave={save}
 	/>
 

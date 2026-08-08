@@ -38,19 +38,103 @@ const lineString = customType<{ data: string; driverParam: string }>({
 	dataType: () => 'geometry(LineString, 4326)'
 });
 
+/**
+ * Nutzer und Rollen (Anforderungen 6.1).
+ *
+ * `role` ist wie `activityType` bewusst `text` mit CHECK statt pg-Enum —
+ * ein Enum zu erweitern ist in Postgres eine Migration, und die Rolle
+ * `guest` steht in 6.1 bereits als KANN in Aussicht.
+ *
+ * `active` statt Löschen: 6.1 verlangt „deaktivieren", nicht „entfernen".
+ * Ein gelöschter Nutzer nähme seine Touren mit oder hinterließe verwaiste
+ * Zeilen; ein deaktivierter behält beides und kommt nur nicht mehr herein.
+ */
+export const users = pgTable(
+	'users',
+	{
+		id: uuid().primaryKey().default(sql`gen_random_uuid()`),
+
+		/**
+		 * Anmeldename. Klein geschrieben gespeichert, damit „Elmar" und
+		 * „elmar" nicht zwei Konten sind — die Groß-/Kleinschreibung beim
+		 * Anmelden ist eine Fehlerquelle ohne jeden Nutzen.
+		 */
+		username: text().notNull().unique(),
+
+		/** Anzeigename, so wie die Person geschrieben werden will. */
+		displayName: text().notNull(),
+
+		/**
+		 * scrypt aus node:crypto, Format `scrypt$N$r$p$salt$hash` (base64url).
+		 *
+		 * Kein argon2 und kein bcrypt: beide sind native Module mit
+		 * Build-Schritt. Auf einem Host mit 3,7 GB und elf Apps ist eine
+		 * Abhängigkeit, die beim Deploy kompiliert, ein Risiko ohne Gegenwert
+		 * — scrypt ist in Node eingebaut und für Passwörter zugelassen.
+		 * Die Parameter stehen im Hash, damit sie sich später erhöhen lassen,
+		 * ohne alte Passwörter ungültig zu machen.
+		 */
+		passwordHash: text().notNull(),
+
+		role: text().$type<'admin' | 'user'>().notNull().default('user'),
+
+		/** Deaktivierte Nutzer kommen nicht herein; ihre Touren bleiben. */
+		active: text().$type<'yes' | 'no'>().notNull().default('yes'),
+
+		createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [
+		check('users_role_check', sql`${t.role} in ('admin', 'user')`),
+		check('users_active_check', sql`${t.active} in ('yes', 'no')`)
+	]
+);
+
+export type UserRow = typeof users.$inferSelect;
+
+/**
+ * Sitzungen in der Datenbank, nicht als JWT.
+ *
+ * Der Grund steht in 6.1: ein Admin muss einen Nutzer **deaktivieren**
+ * können. Ein signiertes Token lässt sich bis zum Ablauf nicht zurückrufen
+ * — der deaktivierte Nutzer arbeitete weiter, und das Häkchen in der
+ * Verwaltung wäre eine Lüge. Eine Sitzungszeile ist mit einem DELETE weg.
+ *
+ * Gespeichert wird der SHA-256 der Kennung, nicht die Kennung selbst. Wer
+ * die Tabelle liest, kann sich damit nicht anmelden.
+ */
+export const sessions = pgTable(
+	'sessions',
+	{
+		/** SHA-256 des Cookie-Werts, hex. */
+		tokenHash: text().primaryKey(),
+		userId: uuid()
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		expiresAt: timestamp({ withTimezone: true }).notNull(),
+		createdAt: timestamp({ withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [index('sessions_user_idx').on(t.userId)]
+);
+
 export const tours = pgTable(
 	'tours',
 	{
 		id: uuid().primaryKey().default(sql`gen_random_uuid()`),
 
 		/**
-		 * Steht von Tag eins da, obwohl es noch keine Anmeldung gibt, und
-		 * jede Abfrage filtert darauf. Wenn die Anmeldung kommt, liest eine
-		 * einzige Zeile in hooks.server.ts die Sitzung statt der festen
-		 * Kennung — kein Umbau durch fünf Schichten. Der Fremdschlüssel auf
-		 * `users` kommt mit derselben Migration.
+		 * Stand von Tag eins da, als es noch keine Anmeldung gab, und jede
+		 * Abfrage filterte darauf. Die Rechnung ist aufgegangen: für die
+		 * Anmeldung war hier nur der Fremdschlüssel zu ergänzen, und in
+		 * hooks.server.ts wurde eine Konstante durch die Sitzung ersetzt.
+		 *
+		 * `onDelete: 'restrict'` mit Absicht — 6.1 kennt Deaktivieren, nicht
+		 * Löschen. Wer einen Nutzer doch entfernen will, muss sich vorher
+		 * entscheiden, was mit seinen Touren geschieht.
 		 */
-		ownerId: uuid().notNull(),
+		ownerId: uuid()
+			.notNull()
+			.references(() => users.id, { onDelete: 'restrict' }),
 
 		/** Sortiert nach deutscher Kollation — dafür wurde die Datenbank mit
 		 *  ICU und de-DE aufgesetzt. */

@@ -179,6 +179,7 @@ framework-frei und wandern unverändert.
 | **Höhenlinien und Schummerung** | **`maplibre-contour`**, im Browser aus den Höhenkacheln gerechnet — keine vorgerenderten Kacheln nötig |
 | Datenbank | **Postgres + PostGIS** |
 | **Datenzugriff** | **Drizzle** für Normalspalten, **`postgres.js`** roh für alles Räumliche — PostGIS-Funktionen gehören in SQL, nicht in ein ORM |
+| **Anmeldung** | **scrypt aus `node:crypto`** für Passwörter, Sitzungen als Tabelle mit httpOnly-Cookie — kein JWT, keine native Krypto-Abhängigkeit |
 | Höhenprofil | **selbst gezeichnetes SVG**, kein Chart.js — 71 Zeilen Pfadberechnung statt einer Bibliothek |
 | Geo-Mathematik | Turf.js (nur benötigte Module) |
 | Routing | **BRouter**, selbst gehostet im Docker |
@@ -201,8 +202,21 @@ Der MVP-Schnitt ist „Mittel" (Abschnitt 7).
 
 ### 6.1 Zugang, Nutzer, Rollen
 
+> **Nachtrag 8. August 2026 — Gastzugang.** Die App ist **ohne Anmeldung benutzbar**:
+> Karte, Ortssuche, Routing, Höhenprofil und Wegenetz stehen jedem offen. Was ein Konto
+> verlangt, ist das **Behalten** — eine Tour speichern, das eigene Archiv sehen, GPX
+> exportieren. Gäste sehen keine gespeicherten Touren, auch keine fremden.
+>
+> Das ist nicht die Rolle „Gast" aus dem KANN weiter unten: die sollte fremde Touren
+> *lesen* dürfen. Hier gibt es überhaupt keine Rolle, sondern schlicht keine Sitzung.
+>
+> **Der Preis steht in „Betrieb" (Abschnitt 7):** hinter den offenen Endpunkten liegen der
+> eigene Router und fremde Fair-Use-Dienste. Deshalb kommt mit dem Gastzugang eine
+> Begrenzung je IP-Adresse — ohne sie wäre das ein offener Router im Netz.
+
 | Prio | Anforderung |
 |---|---|
+| MUSS | **Ohne Anmeldung**: Karte, Planung und Routing benutzbar; kein Speichern, kein Archiv |
 | MUSS | Login mit Benutzername/E-Mail und Passwort; Sitzung bleibt auf dem Handy erhalten |
 | MUSS | Rolle **Admin**: Nutzer anlegen, bearbeiten, deaktivieren, Rolle zuweisen |
 | MUSS | Rolle **Nutzer**: eigene Touren planen, durchführen, archivieren |
@@ -386,6 +400,10 @@ Touren auf einen Blick besser als ein Foto vom Gipfel.
 - Alles per Docker Compose auf dem kleinen Hetzner-Server
 - Speicher- und RAM-Bedarf passen zur genannten Serverklasse
 - **Keine kostenpflichtigen APIs, keine API-Keys**
+- **Begrenzung der Anfragen je IP-Adresse** auf allen Endpunkten, die ohne Anmeldung
+  offenstehen. Der Nutzerkreis mit Konto ist bekannt und klein, das offene Netz ist es
+  nicht — und dahinter liegen der eigene Router auf einem kleinen Server und fremde
+  Fair-Use-Dienste. Im Prozessspeicher, ohne zweiten Dienst
 - **Keine Fremd-Fair-Use-Dienste im Dauerbetrieb** — Routing und Geocoding selbst hosten
   *(die aktuelle Wanderer-Installation nutzt `valhalla1.openstreetmap.de`,
   `overpass-api.de` und `nominatim.openstreetmap.org`; für Dauerbetrieb nicht zulässig)*
@@ -395,6 +413,28 @@ Touren auf einen Blick besser als ein Foto vom Gipfel.
 - Alle Tourdaten auf dem eigenen Server
 - Kein Tracking, keine Telemetrie, keine externen Analytics
 - Offene Formate (GPX), jederzeit vollständig exportierbar
+
+### Recht
+
+Die App ist öffentlich erreichbar und wird in Deutschland betrieben. Daraus folgt:
+
+- **Impressum und Datenschutzerklärung** sind von jeder Ansicht aus erreichbar und
+  **ohne Anmeldung** — § 5 DDG verlangt „ständig verfügbar", und eine
+  Anbieterkennzeichnung hinter einem Login ist keine
+- Die Betreiberangaben kommen aus `PUBLIC_LEGAL_*` in `.env`, damit keine
+  personenbezogenen Daten im Repository liegen. Solange ein Platzhalter aktiv ist, zeigen
+  beide Seiten einen **Entwurfshinweis** und erfüllen ihren Zweck ausdrücklich nicht
+- Die Datenschutzerklärung beschreibt die **tatsächlichen** Verhältnisse dieser App, nicht
+  die einer beliebigen Web-App. Insbesondere: eine gespeicherte Route ist eine Ortsangabe,
+  und die Empfängerliste ist kurz, weil Ortssuche, Höhendaten und Routensuche über den
+  eigenen Server laufen — die IP des Nutzers geht dorthin nicht
+- Die Datenübertragbarkeit ist keine Zusage auf Vorrat: der GPX-Export erfüllt sie bereits
+- Attribution für OpenStreetMap (ODbL) und Waymarked Trails (CC BY-SA) steht an der Karte
+  *und* im Impressum. Kein Bedienelement darf die Attributionszeile überdecken
+  (Abschnitt 10)
+
+> Die Texte sind eine Arbeitsgrundlage nach bestem Wissen und **keine anwaltliche
+> Prüfung**. Vor dem Livegang gehören Angaben und Aufbewahrungsfristen kontrolliert.
 
 ---
 
@@ -555,16 +595,45 @@ Tourenliste.** Jede Etappe war für sich prüfbar.
 Ortssuche über Nominatim · eigener Standort auf beiden Karten · markiertes Wegenetz als
 einblendbares Overlay · Weg B (OSM-Relation übernehmen) · Weg C (GPX-Import).
 
-**Anmeldung und Rollen wurden dabei übersprungen** — sie standen als Erstes auf dieser Liste.
-Das ist nachzuholen, bevor irgendetwas öffentlich erreichbar wird: `hooks.server.ts` setzt
-den Eigentümer heute auf eine Konstante, jeder Besucher ist damit derselbe Nutzer und darf
-schreiben. Siehe [02-deployment-befund.md](02-deployment-befund.md), Abschnitt 4.
+**Anmeldung und Rollen** standen als Erstes auf dieser Liste, wurden übersprungen und sind
+am 8. August 2026 nachgeholt worden — sie waren der Blocker vor jedem Deploy
+([02-deployment-befund.md](02-deployment-befund.md), Abschnitt 4). Umgesetzt sind damit
+alle MUSS aus Abschnitt 6.1 und beide SOLL:
+
+| 6.1 verlangt | Umgesetzt als |
+|---|---|
+| Login, Sitzung bleibt erhalten | Sitzungstabelle + httpOnly-Cookie, 90 Tage, gleitend verlängert |
+| Rolle Admin: anlegen, bearbeiten, deaktivieren, Rolle zuweisen | `/verwaltung` |
+| Rolle Nutzer: eigene Touren | `owner_id` filtert wie bisher — nur steht jetzt ein echter Nutzer dahinter |
+| Selbstregistrierung abschaltbar (Standard: aus) | es gibt keine; Zugänge entstehen nur in der Verwaltung oder über `make db-admin` |
+| SOLL: Passwort ändern / zurücksetzen | in der Verwaltung, beendet alle Sitzungen des Nutzers |
+| SOLL: klare Eigentümerschaft | Fremdschlüssel `tours.owner_id → users.id`, `ON DELETE restrict` |
+
+**Zwei Dinge, die dabei ausdrücklich entschieden wurden.** Passwörter über scrypt aus
+`node:crypto` statt argon2 oder bcrypt — beide sind native Module mit Build-Schritt, und
+auf einem Host mit 3,7 GB ist eine Abhängigkeit, die beim Deploy kompiliert, ein Risiko
+ohne funktionalen Gegenwert. Und Sitzungen in der Datenbank statt als JWT, weil ein
+signiertes Token bis zum Ablauf gilt: „deaktivieren" wäre damit eine Zusage, die die
+Technik nicht einhält.
+
+Offen bleibt aus 6.1 nur, was dort als KANN steht: Rolle Gast und das Freigeben einzelner
+Touren an andere Nutzer derselben Instanz.
+
+**Am selben Tag kamen zwei Dinge dazu**, beide als Nachtrag in 6.1 bzw. 7 festgehalten:
+
+| | |
+|---|---|
+| **Gastzugang** | Karte, Planung und Routing ohne Konto; Speichern und Archiv nur mit. Dazu eine Begrenzung je IP-Adresse auf den offenen Endpunkten |
+| **Impressum und Datenschutz** | `/impressum` und `/datenschutz`, ohne Anmeldung erreichbar, Betreiberangaben aus `PUBLIC_LEGAL_*`, Entwurfshinweis solange Platzhalter aktiv sind |
 
 ### Was noch aussteht
 
-Anmeldung und Rollen (**zuerst**) · POIs je Aktivitätsart · Wetter · Feldansicht ·
-Track-Aufzeichnung · Vergleich geplant ↔ durchgeführt · Untergrund entlang der Route
-einfärben · dunkler Kartenstil (Etappe 4).
+POIs je Aktivitätsart · Wetter · Feldansicht · Track-Aufzeichnung ·
+Vergleich geplant ↔ durchgeführt · Untergrund entlang der Route einfärben ·
+dunkler Kartenstil (Etappe 4).
+
+**Vor dem Livegang:** die `PUBLIC_LEGAL_*`-Werte setzen — solange sie fehlen, tragen
+Impressum und Datenschutzerklärung einen Entwurfshinweis und erfüllen ihren Zweck nicht.
 
 > **Regel, damit dieser Abschnitt nicht wieder veraltet.** Schließt eine Etappe, wird hier
 > das Häkchen gesetzt und im README „Was schon läuft" ergänzt. **Zwei Stellen, sonst keine.**

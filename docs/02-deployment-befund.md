@@ -41,7 +41,7 @@ alles Folgende.
 | # | Punkt | Art | Wer entscheidet |
 |---|---|---|---|
 | 1 | PostGIS fehlt in der gemeinsamen Datenbank | Entscheidung mit Wirkung auf vier fremde Apps | Elmar |
-| 2 | Keine Anmeldung — jeder Besucher ist Eigentümer | Muss vor dem Öffnen der Domain gelöst sein | Elmar |
+| 2 | ~~Keine Anmeldung — jeder Besucher ist Eigentümer~~ **erledigt 8. August 2026** | war: muss vor dem Öffnen der Domain gelöst sein | — |
 | 3 | BRouter-Heap passt nicht zum freien RAM | Konfiguration, unstrittig | — |
 | 4 | Kein Dockerfile, kein Prod-Compose, kein `/health` | reine Bauarbeit | — |
 
@@ -97,7 +97,16 @@ ein manuelles Hetzner-Backup, nicht nur den Dump (DEPLOYMENT 7).
 
 ---
 
-## 4. Es gibt keine Anmeldung
+## 4. Es gibt keine Anmeldung — **erledigt am 8. August 2026**
+
+> **Dieser Abschnitt beschreibt einen behobenen Zustand.** Anmeldung, Rollen und
+> Nutzerverwaltung sind gebaut: `hooks.server.ts` liest die Sitzung, ohne Anmeldung ist
+> keine Seite und kein Endpunkt erreichbar, `/verwaltung` verwaltet Nutzer, und
+> `make db-admin` legt den ersten Zugang an. Die unten empfohlene Basic-Auth-Krücke wird
+> damit **nicht** gebraucht. Der Befund bleibt als Beleg stehen, warum das der erste
+> Schritt vor dem Deploy war.
+
+### Der ursprüngliche Befund
 
 **Befund.** [hooks.server.ts](../src/hooks.server.ts) setzt `event.locals.ownerId` auf die
 Konstante `SINGLE_OWNER_ID` aus [owner.ts](../src/lib/server/owner.ts). Jede Abfrage filtert

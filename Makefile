@@ -1,11 +1,16 @@
 # Wandervogel — lokale Bedienung.
 #
+#   make          zeigt alle Befehle
 #   make start    Dienste + Entwicklungsserver im Hintergrund
 #   make stop     alles wieder anhalten
-#   make build    Produktions-Build
 #
 # Der Entwicklungsserver läuft bewusst auf dem Host und nicht im Container,
 # damit Hot Reload funktioniert. In Docker stehen nur Postgres und BRouter.
+#
+# **Die Hilfe wird aus den `##`-Kommentaren erzeugt.** Vorher war sie ein
+# von Hand gepflegter Block, und genau das ging schief: `db-admin` fehlte
+# darin vom ersten Tag an. Ein neues Ziel ohne `##` taucht nicht auf — das
+# ist die einzige Regel.
 
 SHELL := /bin/bash
 
@@ -19,39 +24,21 @@ APP_PID  := $(RUN_DIR)/app.pid
 APP_LOG  := $(RUN_DIR)/app.log
 
 .DEFAULT_GOAL := help
-.PHONY: help install env services services-stop logs start dev stop restart \
-        build preview preview-stop check segments status clean clean-all \
-        db-generate db-migrate db-push db-studio db-dump db-restore kill-own
+.PHONY: help env services start dev stop restart status logs \
+        check build preview segments \
+        db-generate db-migrate db-studio db-admin db-dump db-restore \
+        clean kill-own
 
 ## ----------------------------------------------------------------- Übersicht
 
 help:
 	@echo 'Wandervogel — verfügbare Befehle:'
+	@awk 'BEGIN { FS = ":.*##" } \
+		/^##@/ { printf "\n  \033[1m%s\033[0m\n", substr($$0, 5); next } \
+		/^[a-z][a-z0-9-]*:.*##/ { printf "    %-14s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@echo ''
-	@echo '  make install        Abhängigkeiten installieren (pnpm)'
-	@echo '  make start          Dienste + Entwicklungsserver (Hintergrund, Port $(APP_PORT))'
-	@echo '  make dev            Entwicklungsserver im Vordergrund (Strg-C beendet)'
-	@echo '  make stop           Entwicklungsserver, Produktionsserver und Dienste anhalten'
-	@echo '  make restart        stop, dann start'
-	@echo '  make status         läuft was?'
-	@echo ''
-	@echo '  make build          Produktions-Build (adapter-node)'
-	@echo '  make preview        gebaute App starten (Hintergrund, Port $(PREVIEW_PORT))'
-	@echo '  make check          Typen und Svelte prüfen'
-	@echo ''
-	@echo '  make services       nur Docker-Dienste starten'
-	@echo '  make services-stop  nur Docker-Dienste anhalten'
-	@echo '  make logs           Docker-Logs folgen'
-	@echo '  make segments       BRouter-Segmente laden, z. B. ARGS=E5_N45'
-	@echo ''
-	@echo '  make db-migrate     Datenbankschema anwenden'
-	@echo '  make db-generate    Migration aus dem Schema erzeugen'
-	@echo '  make db-studio      Tabellen im Browser ansehen'
-	@echo '  make db-dump        Nutzdaten sichern nach data/backup/'
-	@echo '  make db-restore     Sicherung zurückspielen, FILE=…'
-	@echo ''
-	@echo '  make clean          Build-Artefakte entfernen'
-	@echo '  make clean-all      zusätzlich node_modules (Laufzeitdaten bleiben)'
+	@echo "  Entwicklung auf Port $(APP_PORT), gebaute App auf $(PREVIEW_PORT)."
+	@echo '  Logs der Hintergrundserver liegen in $(RUN_DIR)/.'
 
 ## -------------------------------------------------------------- Voraussetzungen
 
@@ -67,15 +54,15 @@ env:
 		exit 1; \
 	fi
 
-install:
-	pnpm install
-
+# Kein eigenes `make install`: jedes Ziel, das Pakete braucht, hängt hier
+# dran und installiert von selbst, sobald package.json oder der Lockfile
+# jünger sind als node_modules.
 node_modules: package.json pnpm-lock.yaml
 	pnpm install
 	@touch node_modules
 
-## ---------------------------------------------------------------- Dienste
-
+# Kein `services-stop`: `make stop` fährt die Dienste mit herunter, und zwei
+# Wege zum selben Ziel sind einer zu viel.
 services: env
 	docker compose up -d
 	@echo 'Warte auf die Datenbank …'
@@ -84,17 +71,11 @@ services: env
 	done
 	@echo 'Dienste laufen.'
 
-services-stop:
-	docker compose down
-
-logs:
-	docker compose logs -f
-
-## -------------------------------------------------------- Entwicklungsserver
+##@ Entwicklung
 
 # Im Hintergrund, damit `make stop` einen Gegenpart hat. Die PID wandert in
 # eine Datei — nur was hier notiert ist, darf `make stop` später beenden.
-start: node_modules services | $(RUN_DIR)
+start: node_modules services | $(RUN_DIR) ## Dienste und Entwicklungsserver starten
 	@if lsof -ti tcp:$(APP_PORT) >/dev/null 2>&1; then \
 		echo 'Auf Port $(APP_PORT) läuft schon etwas — vorher: make stop'; \
 		exit 1; \
@@ -111,15 +92,41 @@ start: node_modules services | $(RUN_DIR)
 	done; \
 	echo 'Server ist nicht hochgekommen. Letzte Zeilen:'; tail -n 20 $(DEV_LOG); exit 1
 
-dev: node_modules services
+dev: node_modules services ## Entwicklungsserver im Vordergrund, Strg-C beendet
 	pnpm dev
 
-stop:
+stop: ## Beide Server und die Docker-Dienste anhalten
 	@$(MAKE) --no-print-directory kill-own PIDFILE=$(DEV_PID) PORT=$(APP_PORT) WHAT='Entwicklungsserver'
 	@$(MAKE) --no-print-directory kill-own PIDFILE=$(APP_PID) PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
 	docker compose down
 
-restart: stop start
+restart: stop start ## stop, dann start
+
+status: ## Läuft was?
+	@$(MAKE) --no-print-directory status-one PIDFILE=$(DEV_PID) PORT=$(APP_PORT) WHAT='Entwicklungsserver'
+	@$(MAKE) --no-print-directory status-one PIDFILE=$(APP_PID) PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
+	@docker compose ps
+
+# Dieselbe Unterscheidung wie in kill-own, und aus demselben Grund.
+#
+# Vorher schaute status nur, ob der Port belegt ist. Auf Port 3000 liegt auf
+# diesem Rechner aber eine fremde App — status meldete also einen laufenden
+# Produktionsserver, den es nie gab. Das ist genau die Verwechslung, die bei
+# kill-own schon einmal Docker Desktop mitgerissen hat; hier kostet sie nur
+# eine Falschaussage, aber falsch ist sie trotzdem.
+.PHONY: status-one
+status-one:
+	@pid=$$(cat $(PIDFILE) 2>/dev/null); \
+	if [ -n "$$pid" ] && kill -0 $$pid 2>/dev/null; then \
+		printf '%-19s läuft — http://localhost:%s\n' '$(WHAT):' '$(PORT)'; \
+	elif lsof -ti tcp:$(PORT) >/dev/null 2>&1; then \
+		printf '%-19s aus (Port %s ist belegt, aber von jemand anderem)\n' '$(WHAT):' '$(PORT)'; \
+	else \
+		printf '%-19s aus\n' '$(WHAT):'; \
+	fi
+
+logs: ## Docker-Logs folgen
+	docker compose logs -f
 
 # Beendet nur, was dieses Makefile selbst gestartet hat.
 #
@@ -131,7 +138,6 @@ restart: stop start
 #
 # `pkill -P` zuerst: `pnpm dev` startet Vite als Kindprozess, der ein kill
 # auf die pnpm-PID sonst überlebt.
-.PHONY: kill-own
 kill-own:
 	@pid=$$(cat $(PIDFILE) 2>/dev/null); \
 	if [ -z "$$pid" ] || ! kill -0 $$pid 2>/dev/null; then \
@@ -150,23 +156,17 @@ kill-own:
 	rm -f $(PIDFILE); \
 	echo "$(WHAT) angehalten."
 
-status:
-	@if lsof -ti tcp:$(APP_PORT) >/dev/null 2>&1; then \
-		echo 'Entwicklungsserver: läuft — http://localhost:$(APP_PORT)'; \
-	else echo 'Entwicklungsserver: aus'; fi
-	@if lsof -ti tcp:$(PREVIEW_PORT) >/dev/null 2>&1; then \
-		echo 'Produktionsserver:  läuft — http://localhost:$(PREVIEW_PORT)'; \
-	else echo 'Produktionsserver:  aus'; fi
-	@docker compose ps
+##@ Prüfen und Bauen
 
-## ---------------------------------------------------------------- Build
+check: node_modules ## Typen und Svelte prüfen
+	pnpm check
 
-build: node_modules
+build: node_modules ## Produktions-Build (adapter-node)
 	pnpm build
 
 # Startet den Build über adapter-node, nicht `vite preview` — so läuft lokal
-# dasselbe wie später auf dem Server.
-preview: build services | $(RUN_DIR)
+# dasselbe wie später auf dem Server. Angehalten wird über `make stop`.
+preview: build services | $(RUN_DIR) ## Gebaute App starten, wie auf dem Server
 	@if lsof -ti tcp:$(PREVIEW_PORT) >/dev/null 2>&1; then \
 		echo "Auf Port $(PREVIEW_PORT) läuft schon etwas."; exit 1; \
 	fi
@@ -182,61 +182,63 @@ preview: build services | $(RUN_DIR)
 	done; \
 	echo 'Server ist nicht hochgekommen. Letzte Zeilen:'; tail -n 20 $(APP_LOG); exit 1
 
-preview-stop:
-	@$(MAKE) --no-print-directory kill-own PIDFILE=$(APP_PID) PORT=$(PREVIEW_PORT) WHAT='Produktionsserver'
-
-check: node_modules
-	pnpm check
-
-# Ohne ARGS lädt das Skript Deutschland (~800 MB).
-#   make segments ARGS=E5_N45
-#   make segments ARGS=--alps
-segments:
-	pnpm segments $(ARGS)
-	@echo 'Nach neuen Segmenten: docker compose restart brouter'
-
-## ---------------------------------------------------------------- Datenbank
+##@ Datenbank
 
 # drizzle-kit liest DATABASE_URL aus der Umgebung, nicht aus .env — deshalb
 # dieselbe Quelle wie bei `make preview`.
 DB_ENV := set -a; . ./.env; set +a;
 
-db-generate: env node_modules
-	@$(DB_ENV) pnpm exec drizzle-kit generate
-
-db-migrate: env node_modules services
+# Kein `db-push`. Das Ziel gab es, war aber ausdrücklich „nur zum
+# Experimentieren" — und es ist der einzige Befehl im Projekt, der Daten
+# zerstören kann: ohne Migrationsdatei vergleicht drizzle-kit gegen den
+# Ist-Zustand und schlägt bei PostGIS-Nebenschemata vor, die komplette
+# Erweiterung zu löschen (siehe drizzle.config.ts). Der Weg ist
+# db-generate, die erzeugte Datei lesen, dann db-migrate.
+db-migrate: env node_modules services ## Schema anwenden
 	@$(DB_ENV) pnpm exec drizzle-kit migrate
 	@echo 'Migrationen angewendet.'
 
-# Nur zum Experimentieren. Schreibt das Schema ohne Migrationsdatei und
-# kann deshalb kein CREATE EXTENSION mittragen.
-db-push: env node_modules services
-	@$(DB_ENV) pnpm exec drizzle-kit push
+db-generate: env node_modules ## Migration aus dem Schema erzeugen
+	@$(DB_ENV) pnpm exec drizzle-kit generate
+	@echo 'Erzeugte Datei vor dem Anwenden lesen — siehe drizzle.config.ts.'
 
-db-studio: env node_modules services
+db-studio: env node_modules services ## Tabellen im Browser ansehen
 	@$(DB_ENV) pnpm exec drizzle-kit studio
 
+# Der einzige Weg in eine frische Installation: Selbstregistrierung gibt es
+# laut Anforderungen 6.1 nicht. Auf einen vorhandenen Namen angewandt setzt
+# der Aufruf dessen Passwort zurück — die Notbremse, wenn niemand mehr
+# hineinkommt.
+db-admin: env node_modules services ## Admin anlegen oder Passwort setzen: NAME=… PASS=…
+	@[ -n "$(NAME)" ] && [ -n "$(PASS)" ] || \
+		{ echo 'Aufruf: make db-admin NAME=… PASS=… [ANZEIGE="…"]'; exit 1; }
+	@$(DB_ENV) NAME='$(NAME)' PASS='$(PASS)' ANZEIGE='$(ANZEIGE)' node data/admin.mjs
+
 # Erfüllt die Anforderung „Backup der Nutzdaten mit einem Befehl".
-db-dump: env services
+db-dump: env services ## Nutzdaten sichern nach data/backup/
 	@mkdir -p data/backup
 	@f=data/backup/wandervogel-$$(date +%F-%H%M).dump; \
 	docker exec wv-db pg_dump -Fc -U $${POSTGRES_USER:-wandervogel} \
 		-d $${POSTGRES_DB:-wandervogel} > $$f && \
 	echo "Gesichert: $$f ($$(du -h $$f | cut -f1))"
 
-# Zurückspielen: make db-restore FILE=data/backup/…
-db-restore: env services
+db-restore: env services ## Sicherung zurückspielen: FILE=…
 	@[ -n "$(FILE)" ] || { echo 'FILE fehlt: make db-restore FILE=data/backup/…'; exit 1; }
 	@docker exec -i wv-db pg_restore -U $${POSTGRES_USER:-wandervogel} \
 		-d $${POSTGRES_DB:-wandervogel} --clean --if-exists < $(FILE)
 	@echo 'Zurückgespielt.'
 
-## ---------------------------------------------------------------- Aufräumen
+##@ Daten und Aufräumen
+
+# Ohne ARGS lädt das Skript Deutschland (~800 MB).
+#   make segments ARGS=E5_N45
+#   make segments ARGS=--alps
+segments: ## BRouter-Segmente laden, z. B. ARGS=E5_N45
+	pnpm segments $(ARGS)
+	@echo 'Nach neuen Segmenten: docker compose restart brouter'
 
 # Laufzeitdaten unter data/ bleiben unangetastet — dort liegen Datenbank und
-# die großen BRouter-Segmente.
-clean:
+# die großen BRouter-Segmente. Für einen wirklich frischen Stand zusätzlich
+# `rm -rf node_modules`; ein eigenes Ziel dafür war ein Einzeiler zu viel.
+clean: ## Build-Artefakte entfernen
 	rm -rf build .svelte-kit $(RUN_DIR)
-
-clean-all: clean
-	rm -rf node_modules

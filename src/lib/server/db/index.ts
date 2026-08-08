@@ -33,7 +33,19 @@ const client =
 
 if (import.meta.env.DEV) globalForDb.__wvClient = client;
 
-export const db = drizzle(client, { schema });
+/**
+ * `casing` muss hier **noch einmal** stehen.
+ *
+ * In `drizzle.config.ts` gilt die Einstellung nur für drizzle-kit, also für
+ * die erzeugte DDL. Der Abfragebauer zur Laufzeit kennt sie nicht und
+ * benutzt sonst die JavaScript-Namen: `select "displayName" from users`
+ * gegen eine Spalte, die `display_name` heißt.
+ *
+ * Bis zur Anmeldung ist das niemandem aufgefallen, weil `db/tours.ts`
+ * ausschließlich rohes SQL schreibt — `db/users.ts` war der erste Code im
+ * Projekt, der den Abfragebauer benutzt, und scheiterte sofort.
+ */
+export const db = drizzle(client, { schema, casing: 'snake_case' });
 
 /** Für die Abfragen, die rohes SQL brauchen — alles Geometrische. */
 export { client as sql };

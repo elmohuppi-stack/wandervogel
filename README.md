@@ -11,6 +11,17 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 
 ## Was schon läuft
 
+- **Ohne Konto benutzbar**: Karte, Ortssuche, Routing, Höhenprofil und Wegenetz
+  stehen jedem offen. Ein Konto braucht nur, wer **behalten** will — speichern,
+  Archiv, GPX-Export. Der Entwurf überlebt den Weg über die Anmeldung
+- **Anmeldung mit Rollen**: Sitzungen in der Datenbank, Passwörter mit scrypt.
+  Der Schutz liegt in `hooks.server.ts` an einer Stelle, nicht in jeder Route —
+  eine neue Seite ist dadurch standardmäßig zu, nicht standardmäßig offen
+- **Begrenzung je IP** auf allen Endpunkten, die ohne Konto offenstehen
+- **Impressum und Datenschutz** unter `/impressum` und `/datenschutz`, ohne
+  Anmeldung erreichbar
+- **Nutzerverwaltung** für Admins unter `/verwaltung`: anlegen, umbenennen,
+  Rolle setzen, deaktivieren, Passwort zurücksetzen. Keine Selbstregistrierung
 - **Startbildschirm**: Tourenarchiv als Liste *und* Karte, mit Umriss-Vorschau,
   Filter nach Aktivitätsart, Sortierung und Stichwortsuche
 - **Planungsansicht** am Laptop: Karte, Wegpunkte, Route, Kennzahlen, Höhenprofil
@@ -33,10 +44,10 @@ Die Anforderungen stehen in [docs/01-anforderungen.md](docs/01-anforderungen.md)
 
 ## Noch nicht
 
-Feldansicht fürs Handy · Anmeldung und Rollen ·
+Feldansicht fürs Handy ·
 **eigenes** Wegenetz-Overlay aus einem OSM-Extrakt · Untergrund entlang der
 Route auf der Karte einfärben · POIs · Wetter · Track-Aufzeichnung ·
-Vergleich geplant ↔ durchgeführt
+Vergleich geplant ↔ durchgeführt · dunkler Kartenstil
 
 Die Reihenfolge steht in [Anforderungen §9](docs/01-anforderungen.md).
 
@@ -52,11 +63,19 @@ Voraussetzungen: Node 22+, pnpm, Docker.
 
 ```bash
 cp .env.example .env        # POSTGRES_PASSWORD setzen
-make install
 make segments               # Routing-Segmente für Deutschland (~800 MB)
 make db-migrate             # Tabellen anlegen
+make db-admin NAME=elmar PASS=… ANZEIGE="Elmar Hepp"   # erster Zugang
 make start                  # Dienste + http://localhost:5180
 ```
+
+Abhängigkeiten installiert jedes Ziel selbst, sobald `package.json` sich ändert —
+ein eigenes `make install` gibt es nicht mehr.
+
+`make db-admin` ist der **einzige** Weg in eine frische Installation — es gibt
+keine Selbstregistrierung. Auf einen vorhandenen Namen angewandt setzt der
+Aufruf dessen Passwort zurück und beendet alle offenen Sitzungen; das ist
+zugleich die Notbremse, wenn niemand mehr hineinkommt.
 
 `make start` fährt Docker-Dienste und Entwicklungsserver im Hintergrund hoch,
 `make stop` beides wieder herunter. `make` allein zeigt alle Befehle.
@@ -81,16 +100,22 @@ Nach dem Nachladen von Segmenten: `docker compose restart brouter`.
 | `make build` | Produktions-Build (adapter-node) |
 | `make preview` | gebaute App über `node build` auf Port 3000 |
 | `make check` | Typen und Svelte prüfen |
-| `make services` / `services-stop` / `logs` | nur die Docker-Dienste |
+| `make logs` | Docker-Logs folgen |
 | `make segments ARGS=E5_N45` | BRouter-Segmente laden |
 | `make db-migrate` / `db-generate` | Schema anwenden, Migration erzeugen |
+| `make db-admin NAME=… PASS=… [ANZEIGE=…]` | Admin anlegen oder sein Passwort zurücksetzen |
 | `make db-studio` | Tabellen im Browser ansehen |
 | `make db-dump` / `db-restore FILE=…` | Nutzdaten sichern und zurückspielen |
-| `make clean` / `clean-all` | Build-Artefakte, zusätzlich `node_modules` |
+| `make clean` | Build-Artefakte entfernen |
 
-Logs der im Hintergrund gestarteten Server liegen in `.run/`. Die zugrunde
-liegenden `pnpm`-Skripte in [package.json](package.json) funktionieren
-unverändert weiter.
+`make` allein zeigt diese Liste — sie wird aus den `##`-Kommentaren im Makefile
+erzeugt und kann deshalb nicht mehr davon abweichen. Logs der im Hintergrund
+gestarteten Server liegen in `.run/`. Die zugrunde liegenden `pnpm`-Skripte in
+[package.json](package.json) funktionieren unverändert weiter.
+
+**Vor dem Livegang:** die `PUBLIC_LEGAL_*`-Werte in `.env` setzen. Solange sie
+fehlen, tragen Impressum und Datenschutzerklärung einen Entwurfshinweis und
+erfüllen ihren Zweck nicht.
 
 ## Architektur in Kürze
 
@@ -103,6 +128,9 @@ unverändert weiter.
 | Höhenlinien | `maplibre-contour` im Browser | keine vorgerenderten Kacheln nötig — die Linien entstehen aus dem Höhenmodell, das ohnehin geladen wird |
 | Datenbank | Postgres + PostGIS, Drizzle | Route als `geometry(LineStringZ)`: der Regionsfilter ist ein `ST_Intersects` auf einem GiST-Index statt einer Schleife in Node |
 | Symbole | eigener Satz, lokal gebündelt | keine Fremddienste im Dauerbetrieb; fünf gebrauchte Glyphen gibt es fertig nirgends |
+| Passwörter | scrypt aus `node:crypto` | argon2 und bcrypt sind native Module mit Build-Schritt — auf dem kleinen Server ein Risiko ohne Gegenwert |
+| Sitzungen | Tabelle + httpOnly-Cookie, **kein JWT** | ein Token lässt sich nicht zurückrufen; „Nutzer deaktivieren" wäre damit eine Lüge |
+| Ratenbegrenzung | im Prozessspeicher, kein Redis | ein zweiter Dienst nur für Zähler wäre teurer als das Problem; Preis ist ein Neustart, der die Zähler vergisst |
 
 ### Zwei Farbwelten, ein Tokensatz
 

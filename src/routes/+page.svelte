@@ -23,9 +23,11 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import IconButton from '$lib/ui/IconButton.svelte';
+	import LegalLinks from '$lib/ui/LegalLinks.svelte';
 	import MapTools from '$lib/ui/MapTools.svelte';
 	import PlaceSearch from '$lib/ui/PlaceSearch.svelte';
 	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
+	import UserMenu from '$lib/ui/UserMenu.svelte';
 	import TourCard from './TourCard.svelte';
 	import type { PageData } from './$types';
 
@@ -104,13 +106,20 @@
 	<header class="topbar">
 		<Icon name="list" size={16} />
 		<h1>Touren</h1>
-		<span class="anzahl num">{data.tours.length}</span>
+		{#if data.user}<span class="anzahl num">{data.tours.length}</span>{/if}
 		<span class="spacer"></span>
+		<LegalLinks />
+		{#if data.user}
+			<UserMenu user={data.user} />
+		{:else}
+			<Button variant="ghost" size="sm" icon="check" href="/anmelden">Anmelden</Button>
+		{/if}
 		<ThemeToggle size="sm" />
 		<Button variant="primary" size="sm" icon="plus" href="/planen">Neue Tour</Button>
 	</header>
 
 	<aside class="liste">
+		{#if data.user}
 		<div class="filter">
 			<label class="suchfeld">
 				<Icon name="search" size={14} />
@@ -151,6 +160,7 @@
 				</select>
 			</label>
 		</div>
+		{/if}
 
 		<div class="karten" bind:this={liste}>
 			{#if data.tours.length > 0}
@@ -161,10 +171,27 @@
 						onHover={(id: string | null) => (hoveredId = id)}
 					/>
 				{/each}
+			{:else if !data.user}
+				<!-- Drei verschiedene Leerzustände. Der eine ist eine
+				     Einführung, der zweite eine Sackgasse, der dritte eine
+				     Einladung — sie zu verwechseln ist der klassische Fehler.
+
+				     Der Gast hat kein leeres Archiv, er hat gar keines. Ihm
+				     „Noch keine Tour gespeichert" zu zeigen wäre eine
+				     Fehlmeldung: es fehlt nichts, es gehört ihm nur nichts. -->
+				<EmptyState icon="route" title="Planen geht ohne Konto">
+					Karte, Routing, Höhenprofil und Wegenetz stehen offen. Zum Speichern einer
+					Tour und für ein eigenes Archiv braucht es eine Anmeldung.
+					{#snippet actions()}
+						<Button variant="primary" size="sm" icon="plus" href="/planen">
+							Tour planen
+						</Button>
+						<Button variant="quiet" size="sm" icon="check" href="/anmelden">
+							Anmelden
+						</Button>
+					{/snippet}
+				</EmptyState>
 			{:else if gefiltert}
-				<!-- Zwei verschiedene Leerzustände. Der eine ist eine
-				     Einführung, der andere eine Sackgasse — sie zu
-				     verwechseln ist der klassische Fehler. -->
 				<EmptyState icon="search" title="Keine Tour passt zum Filter">
 					{#snippet actions()}
 						<Button

@@ -40,6 +40,18 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const activityType = isActivityType(a) ? a : null;
 	const sortiert = SORTS.includes(sort as TourSort) ? (sort as TourSort) : 'updated';
 
+	/*
+	 * Gäste haben kein Archiv, also wird auch keines abgefragt.
+	 *
+	 * Ohne diese Zeile ginge `undefined` als Eigentümer in die Abfrage. Das
+	 * wäre kein Datenleck — `owner_id = null` trifft nichts —, aber ein
+	 * Datenbankzugriff je Seitenaufruf für ein garantiert leeres Ergebnis,
+	 * und genau der Pfad steht Unangemeldeten jetzt offen.
+	 */
+	if (!locals.user) {
+		return { tours: [], filter: { activityType, sort: sortiert, q: q ?? '', bbox } };
+	}
+
 	try {
 		const tours = await listTours(locals.ownerId, { activityType, sort: sortiert, q, bbox });
 		return { tours, filter: { activityType, sort: sortiert, q: q ?? '', bbox } };
@@ -57,6 +69,17 @@ export const actions: Actions = {
 	 * Handlung liefen auseinander.
 	 */
 	delete: async ({ request, locals }) => {
+		/*
+		 * Eigene Wache, weil die Startseite seit dem Gastzugang offen ist.
+		 *
+		 * hooks.server.ts schützt Seiten und Endpunkte, aber eine
+		 * Formularaktion auf einer offenen Seite läuft daran vorbei. Ohne
+		 * diese Zeile ginge `undefined` als Eigentümer in deleteTour — das
+		 * träfe zwar keine Zeile und wäre kein Datenverlust, aber sich auf
+		 * „trifft nichts" zu verlassen ist keine Zugangsprüfung.
+		 */
+		if (!locals.user) return fail(401, { error: 'Dafür braucht es eine Anmeldung.' });
+
 		const form = await request.formData();
 		const id = form.get('id');
 		if (typeof id !== 'string' || !id) return fail(400, { error: 'Keine Tour angegeben' });

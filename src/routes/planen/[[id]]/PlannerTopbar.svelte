@@ -9,6 +9,7 @@
 	import { ACTIVITY_TYPES, activity, type ActivityType } from '$lib/geo/activity';
 	import Button from '$lib/ui/Button.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
+	import LegalLinks from '$lib/ui/LegalLinks.svelte';
 	import SegmentedControl, { type Segment } from '$lib/ui/SegmentedControl.svelte';
 	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
 
@@ -23,6 +24,8 @@
 		saved: boolean;
 		/** Ohne Route gibt es nichts zu speichern. */
 		canSave: boolean;
+		/** Gäste dürfen planen, aber nicht behalten — der Knopf sagt das. */
+		angemeldet: boolean;
 		onSave: () => void;
 	}
 
@@ -34,6 +37,7 @@
 		dirty,
 		saved,
 		canSave,
+		angemeldet,
 		onSave
 	}: Props = $props();
 
@@ -41,7 +45,17 @@
 	// Eine brandneue Tour ist nicht „nicht geändert", sie ist ungespeichert —
 	// das zu verwechseln wäre eine Lüge im ruhigsten Moment der Oberfläche.
 	const fertig = $derived(saved && !dirty);
-	const beschriftung = $derived(saving ? 'Speichert …' : fertig ? 'Gespeichert' : 'Speichern');
+	// Für Gäste heißt der Knopf, was er tut: er führt zur Anmeldung. „Speichern"
+	// zu schreiben und dann wegzunavigieren wäre ein gebrochenes Versprechen.
+	const beschriftung = $derived(
+		!angemeldet
+			? 'Anmelden zum Speichern'
+			: saving
+				? 'Speichert …'
+				: fertig
+					? 'Gespeichert'
+					: 'Speichern'
+	);
 
 	// Aus der Naht erzeugt, nicht aufgezählt: eine dritte Aktivitätsart
 	// erscheint hier von selbst.
@@ -86,15 +100,20 @@
 		{/if}
 	</span>
 
+	<LegalLinks />
 	<ThemeToggle size="sm" />
 
 	<Button
 		variant={fertig ? 'quiet' : 'primary'}
 		size="sm"
-		icon={fertig && !saving ? 'check' : 'save'}
+		icon={!angemeldet ? 'check' : fertig && !saving ? 'check' : 'save'}
 		loading={saving}
-		disabled={!canSave || fertig}
-		title={canSave ? 'Tour speichern (Strg+S)' : 'Erst eine Route berechnen lassen'}
+		disabled={!canSave || (angemeldet && fertig)}
+		title={canSave
+			? angemeldet
+				? 'Tour speichern (Strg+S)'
+				: 'Der Entwurf bleibt erhalten und lässt sich nach der Anmeldung speichern'
+			: 'Erst eine Route berechnen lassen'}
 		onclick={onSave}
 	>
 		{beschriftung}
