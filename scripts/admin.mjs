@@ -23,27 +23,73 @@ import { normalizeUsername, pruefeUsername } from '../src/lib/server/username.ts
 
 const UEBERNAHME_ID = '00000000-0000-4000-8000-000000000001';
 
-const name = normalizeUsername(process.env.NAME ?? '');
-const pass = process.env.PASS ?? '';
-const anzeige = (process.env.ANZEIGE ?? '').trim() || name;
+/**
+ * Passwort verdeckt abfragen.
+ *
+ * **Warum nicht als Umgebungsvariable.** `PASS=…` steht in der Shell-History,
+ * im Prozessbaum (`ps`) und je nach Setup im Auditlog. Über SSH kommt dazu,
+ * dass die äußeren Anführungszeichen des `ssh host '…'` mit den inneren
+ * kollidieren — man baut dann Zitatakrobatik, bei der ein Passwort mit
+ * Sonderzeichen still falsch ankommt.
+ *
+ * `PASS` bleibt trotzdem erlaubt: die Prüfskripte brauchen einen Weg ohne
+ * Eingabe. Aber es ist nicht mehr der empfohlene.
+ */
+function frageVerdeckt(text) {
+	return new Promise((resolve, reject) => {
+		const ein = process.stdin;
+		if (!ein.isTTY) {
+			reject(new Error('Kein Terminal — Passwort über PASS= übergeben oder mit -it aufrufen.'));
+			return;
+		}
+		process.stdout.write(text);
+		ein.setRawMode(true);
+		ein.resume();
+		ein.setEncoding('utf8');
 
-if (!name || !pass) {
-	/*
-	 * Zwei Aufrufwege, weil es zwei Orte gibt.
-	 *
-	 * Ohne eckige Klammern: `[ANZEIGE=…]` ist in zsh ein Dateimuster und
-	 * scheitert beim Kopieren mit „no matches found".
-	 */
-	console.error('NAME und PASS fehlen.');
+		let wert = '';
+		const beenden = () => {
+			ein.setRawMode(false);
+			ein.pause();
+			ein.removeListener('data', aufZeichen);
+			process.stdout.write('\n');
+		};
+		const aufZeichen = (z) => {
+			for (const ch of z) {
+				if (ch === '\r' || ch === '\n') {
+					beenden();
+					resolve(wert);
+					return;
+				}
+				if (ch === '\u0003') {
+					// Strg-C: abbrechen, ohne das Terminal im Rohmodus zu hinterlassen.
+					beenden();
+					process.exit(130);
+				}
+				if (ch === '\u007f' || ch === '\b') wert = wert.slice(0, -1);
+				else if (ch >= ' ') wert += ch;
+			}
+		};
+		ein.on('data', aufZeichen);
+	});
+}
+
+const name = normalizeUsername(process.env.NAME ?? process.argv[2] ?? '');
+const anzeige = (process.env.ANZEIGE ?? process.argv[3] ?? '').trim() || name;
+
+if (!name) {
+	// Ohne eckige Klammern: `[ANZEIGE=…]` ist in zsh ein Dateimuster und
+	// scheitert beim Kopieren mit „no matches found".
+	console.error('Der Anmeldename fehlt. Das Passwort wird verdeckt abgefragt.');
 	console.error('');
 	console.error('Auf dem Entwicklungsrechner:');
-	console.error("  make db-admin NAME=elmar PASS='geheim-und-lang' ANZEIGE='Elmar Hepp'");
+	console.error("  make db-admin NAME=elmar ANZEIGE='Elmar Hepp'");
 	console.error('');
 	console.error('Im laufenden Container auf dem Server:');
-	console.error('  docker compose -f docker-compose.prod.yml exec -e NAME=elmar \\');
-	console.error("    -e PASS='geheim-und-lang' -e ANZEIGE='Elmar Hepp' app node scripts/admin.mjs");
+	console.error('  docker compose -f docker-compose.prod.yml exec -it app \\');
+	console.error("    node scripts/admin.mjs elmar 'Elmar Hepp'");
 	console.error('');
-	console.error('ANZEIGE ist optional; ohne Angabe wird NAME genommen.');
+	console.error('Der Anzeigename ist optional; ohne Angabe wird der Anmeldename genommen.');
 	process.exit(1);
 }
 const namensfehler = pruefeUsername(name);
@@ -51,6 +97,17 @@ if (namensfehler) {
 	console.error(namensfehler);
 	process.exit(1);
 }
+
+let pass = process.env.PASS ?? '';
+if (!pass) {
+	pass = await frageVerdeckt(`Passwort für „${name}": `);
+	const wiederholung = await frageVerdeckt('Zur Sicherheit noch einmal:  ');
+	if (pass !== wiederholung) {
+		console.error('Die beiden Eingaben sind nicht gleich.');
+		process.exit(1);
+	}
+}
+
 const passfehler = pruefePasswort(pass);
 if (passfehler) {
 	console.error(passfehler);

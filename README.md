@@ -73,7 +73,7 @@ Voraussetzungen: Node 22+, pnpm, Docker.
 cp .env.example .env        # POSTGRES_PASSWORD setzen
 make segments               # Routing-Segmente für Deutschland (~800 MB)
 make db-migrate             # Tabellen anlegen
-make db-admin NAME=elmar PASS=… ANZEIGE="Elmar Hepp"   # erster Zugang
+make db-admin NAME=elmar ANZEIGE="Elmar Hepp"   # erster Zugang, fragt nach dem Passwort
 make start                  # Dienste + http://localhost:5180
 ```
 
@@ -112,7 +112,7 @@ Nach dem Nachladen von Segmenten: `make brouter-restart`.
 | `make segments ARGS=E5_N45` | BRouter-Segmente laden |
 | `make brouter-restart` | BRouter neu starten, damit neue Segmente greifen |
 | `make db-migrate` / `db-generate` | Schema anwenden, Migration erzeugen |
-| `make db-admin NAME=… PASS=…` | Admin anlegen oder sein Passwort zurücksetzen; `ANZEIGE=…` optional. `make db-admin` allein erklärt die Werte |
+| `make db-admin NAME=…` | Admin anlegen oder sein Passwort zurücksetzen; Passwort wird verdeckt abgefragt. `make db-admin` allein erklärt die Werte |
 | `make db-studio` | Tabellen im Browser ansehen |
 | `make db-dump` / `db-restore FILE=…` | Nutzdaten sichern und zurückspielen |
 | `make clean` | Build-Artefakte entfernen |
@@ -205,7 +205,9 @@ Gebaut wird über [`Dockerfile`](Dockerfile) (drei Stufen, 434 MB) und
 Datenbank ist `pg-shared`. Der erste Zugang entsteht im laufenden Container:
 
 ```bash
-docker compose -f docker-compose.prod.yml exec -e NAME=… -e PASS=… app node scripts/admin.mjs
+# Das Passwort wird verdeckt abgefragt — nicht als Variable übergeben,
+# sonst steht es in der Shell-History und in `ps`.
+docker compose -f docker-compose.prod.yml exec -it app node scripts/admin.mjs elmar 'Elmar Hepp'
 ```
 
 `/health` prüft die Datenbankverbindung mit und meldet 503, wenn sie fehlt — ein
