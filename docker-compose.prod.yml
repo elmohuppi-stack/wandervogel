@@ -8,12 +8,12 @@
 # Aufruf: docker compose -f docker-compose.prod.yml up -d --build
 #
 # Regeln aus optimize-hetzner/ARCHITEKTUR.md 6:
-#   Ports nur auf 127.0.0.1, hetzner-network als external, `- default`
+#   Ports nur auf 127.0.0.1, apps-net als external, `- default`
 #   mit aufführen, eigener Healthcheck, restart und mem_limit.
 
 services:
   # Der Service heißt NICHT "app". Compose setzt den Service-Namen in jedem
-  # Netz als Alias — auch im geteilten hetzner-network. Dort hießen am
+  # Netz als Alias — auch im geteilten apps-net. Dort hießen am
   # 8. August vier Container gleichzeitig "app" (knora, sari, wetter und
   # dieser hier), Docker-DNS lieferte alle vier IPs im Wechsel, und knoras
   # Frontend proxyte seine API-Calls reihum an wandervogel: HTTP 401
@@ -59,7 +59,7 @@ services:
         condition: service_healthy
 
     networks:
-      - hetzner-network
+      - apps-net
       - default
 
     logging:
@@ -105,7 +105,7 @@ services:
 networks:
   # Das gemeinsame Netz, in dem pg-shared liegt. Von außen angelegt, nicht
   # von dieser App — deshalb `external`.
-  hetzner-network:
+  apps-net:
     external: true
   # Muss mit aufgeführt werden: sobald `networks:` an einem Dienst steht,
   # ist das Standardnetz nicht mehr automatisch dabei, und app und brouter
