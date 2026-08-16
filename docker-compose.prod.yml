@@ -1,4 +1,4 @@
-# Wandervogel auf helsinki-80gb.
+# Wandervogel auf nuernberg-16gb.
 #
 # **Kein `db`-Service.** Die Datenbank ist `pg-shared`, die gemeinsame
 # Instanz — ein eigener Postgres ist genau der Zustand, den die
@@ -7,7 +7,7 @@
 #
 # Aufruf: docker compose -f docker-compose.prod.yml up -d --build
 #
-# Regeln aus optimize-hetzner/ARCHITEKTUR.md 6:
+# Regeln aus platform/ARCHITEKTUR.md 6:
 #   Ports nur auf 127.0.0.1, apps-net als external, `- default`
 #   mit aufführen, eigener Healthcheck, restart und mem_limit.
 

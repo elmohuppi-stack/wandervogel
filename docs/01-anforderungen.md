@@ -698,7 +698,7 @@ Vergleich geplant ↔ durchgeführt · Untergrund entlang der Route einfärben �
 dunkler Kartenstil (Etappe 4).
 
 > **Live seit dem 8. August 2026** unter `wandervogel.elmarhepp.de`. Betrieb und
-> Deploy-Weg stehen in `optimize-hetzner`; was diese App eigenbringt, im
+> Deploy-Weg stehen in `platform`; was diese App eigenbringt, im
 > [README](../README.md) unter „Deployment".
 >
 > Offen als erste Nacharbeit: die Höhendaten auf lokale PMTiles umstellen — der

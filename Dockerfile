@@ -2,7 +2,7 @@
 #
 # Drei Stufen, damit im letzten Bild nur landet, was zur Laufzeit gebraucht
 # wird: `build/` und die Produktionsabhängigkeiten. Gemessen 5 MB + 53 MB.
-# Die Regel dahinter steht in optimize-hetzner/ARCHITEKTUR.md 8 — die Images
+# Die Regel dahinter steht in platform/ARCHITEKTUR.md 8 — die Images
 # auf dem Host waren einmal 30,6 GB und sind jetzt 12,4 GB, und das bleibt
 # nur so, wenn jede App mitzieht.
 #
